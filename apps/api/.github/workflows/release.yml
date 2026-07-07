@@ -1,0 +1,79 @@
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout api
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ---- fullstack 模式所需：拉取同 tag 的 admin/user 源码并构建 ----
+      # admin/user 仓库为 public，无需 PAT。要求三仓库已用 scripts/tag-and-push.sh
+      # 打过同名 tag。
+      - name: Checkout admin (cross-repo)
+        uses: actions/checkout@v4
+        with:
+          repository: dujiao-next/admin
+          ref: ${{ github.ref_name }}
+          path: admin-src
+
+      - name: Checkout user (cross-repo)
+        uses: actions/checkout@v4
+        with:
+          repository: dujiao-next/user
+          ref: ${{ github.ref_name }}
+          path: user-src
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+
+      - name: Build admin (fullstack mode)
+        working-directory: admin-src
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build:fullstack
+
+      - name: Build user
+        working-directory: user-src
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Embed frontend assets into api
+        run: |
+          mkdir -p internal/web/dist
+          cp -r admin-src/dist internal/web/dist/admin
+          cp -r user-src/dist  internal/web/dist/user
+          ls -la internal/web/dist/admin internal/web/dist/user | head -10
+
+      # ---- Go 工具链 + GoReleaser ----
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
