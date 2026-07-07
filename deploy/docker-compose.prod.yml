@@ -1,3 +1,76 @@
-# 若木云卡生产环境编排占位
-# TODO: 根据 Dujiao-Next 三端实际部署方式补充服务。
-services: {}
+name: ruomu-card-platform
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  api:
+    build:
+      context: ../apps/api
+      args:
+        APP_VERSION: ${APP_VERSION:-ruomu-local}
+    command: ["./dujiao-api", "-mode", "all"]
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?请在 .env 配置 APP_SECRET_KEY}
+      APP_TOTP_ISSUER: ${APP_TOTP_ISSUER:-若木云卡}
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8080"
+      SERVER_MODE: ${SERVER_MODE:-release}
+      JWT_SECRET: ${JWT_SECRET:?请在 .env 配置 JWT_SECRET}
+      USER_JWT_SECRET: ${USER_JWT_SECRET:?请在 .env 配置 USER_JWT_SECRET}
+      BOOTSTRAP_DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-}
+      BOOTSTRAP_DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
+      DATABASE_DRIVER: ${DATABASE_DRIVER:-sqlite}
+      DATABASE_DSN: ${DATABASE_DSN:-/app/db/ruomu.db}
+      REDIS_ENABLED: "true"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PREFIX: ${REDIS_PREFIX:-ruomu}
+      QUEUE_ENABLED: "true"
+      QUEUE_HOST: "redis"
+      QUEUE_PORT: "6379"
+      QUEUE_PASSWORD: ${REDIS_PASSWORD:-}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      CAPTCHA_PROVIDER: ${CAPTCHA_PROVIDER:-none}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - api-db:/app/db
+      - api-uploads:/app/uploads
+      - api-logs:/app/logs
+
+  user:
+    build:
+      context: ../apps/user
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${USER_PORT:-80}:80"
+    volumes:
+      - ./nginx/user.prod.conf:/etc/nginx/conf.d/default.conf:ro
+
+  admin:
+    build:
+      context: ../apps/admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${ADMIN_PORT:-8081}:80"
+    volumes:
+      - ./nginx/admin.prod.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  redis-data:
+  api-db:
+  api-uploads:
+  api-logs:

@@ -1,3 +1,70 @@
-# 若木云卡开发环境编排占位
-# TODO: 根据 Dujiao-Next 三端实际启动方式补充服务。
-services: {}
+name: ruomu-card-platform-dev
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  api:
+    build:
+      context: ../apps/api
+    command: ["./dujiao-api", "-mode", "all"]
+    depends_on:
+      - redis
+    environment:
+      APP_SECRET_KEY: "0123456789abcdef0123456789abcdef"
+      APP_TOTP_ISSUER: "若木云卡"
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8080"
+      SERVER_MODE: "debug"
+      JWT_SECRET: "ruomu-dev-admin-jwt-secret-0123456789abcdef"
+      USER_JWT_SECRET: "ruomu-dev-user-jwt-secret-0123456789abcdef"
+      BOOTSTRAP_DEFAULT_ADMIN_USERNAME: "admin"
+      BOOTSTRAP_DEFAULT_ADMIN_PASSWORD: "Admin123456"
+      DATABASE_DRIVER: "sqlite"
+      DATABASE_DSN: "/app/db/ruomu-dev.db"
+      REDIS_ENABLED: "true"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_PREFIX: "ruomu"
+      QUEUE_ENABLED: "true"
+      QUEUE_HOST: "redis"
+      QUEUE_PORT: "6379"
+      EMAIL_ENABLED: "false"
+      CAPTCHA_PROVIDER: "none"
+    ports:
+      - "8080:8080"
+    volumes:
+      - api-db:/app/db
+      - api-uploads:/app/uploads
+      - api-logs:/app/logs
+
+  user:
+    build:
+      context: ../apps/user
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+    volumes:
+      - ./nginx/user.dev.conf:/etc/nginx/conf.d/default.conf:ro
+
+  admin:
+    build:
+      context: ../apps/admin
+    depends_on:
+      - api
+    ports:
+      - "5174:80"
+    volumes:
+      - ./nginx/admin.dev.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  redis-data:
+  api-db:
+  api-uploads:
+  api-logs:

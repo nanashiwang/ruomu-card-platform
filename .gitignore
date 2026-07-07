@@ -1,0 +1,17 @@
+.DS_Store
+.env
+*.local
+
+# Frontend artifacts
+node_modules/
+dist/
+apps/*/node_modules/
+apps/*/dist/
+
+# API runtime artifacts
+apps/api/config.yml
+apps/api/db/
+apps/api/uploads/
+apps/api/logs/
+apps/api/*.db
+apps/api/*.log

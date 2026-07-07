@@ -1,0 +1,160 @@
+# 若木云卡本地开发配置示例
+# scripts/dev.sh 会在 apps/api/config.yml 不存在时复制本文件。
+# 本文件仅用于本地开发，不要直接用于生产环境。
+
+app:
+  secret_key: "0123456789abcdef0123456789abcdef"
+  totp_issuer: 若木云卡
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  mode: debug
+
+log:
+  dir: logs
+  filename: app.log
+  max_size_mb: 100
+  max_backups: 7
+  max_age_days: 30
+  compress: true
+
+database:
+  driver: sqlite
+  dsn: ./db/ruomu-dev.db
+  pool:
+    max_open_conns: 1
+    max_idle_conns: 1
+    conn_max_lifetime_seconds: 0
+    conn_max_idle_time_seconds: 0
+
+jwt:
+  secret: "ruomu-dev-admin-jwt-secret-0123456789abcdef"
+  expire_hours: 24
+
+user_jwt:
+  secret: "ruomu-dev-user-jwt-secret-0123456789abcdef"
+  expire_hours: 24
+  remember_me_expire_hours: 168
+
+bootstrap:
+  default_admin_username: admin
+  default_admin_password: Admin123456
+
+redis:
+  enabled: false
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 0
+  prefix: "ruomu"
+
+queue:
+  enabled: false
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 1
+  concurrency: 10
+  queues:
+    default: 10
+    critical: 5
+  upstream_sync_interval: "5m"
+
+upload:
+  max_size: 10485760
+  allowed_types:
+    - image/jpeg
+    - image/png
+    - image/gif
+    - image/webp
+    - image/svg+xml
+  allowed_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .gif
+    - .webp
+    - .svg
+  max_width: 4096
+  max_height: 4096
+
+cors:
+  allowed_origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
+    - "http://localhost:5174"
+    - "http://127.0.0.1:5174"
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Content-Type
+    - Content-Length
+    - Accept-Encoding
+    - Authorization
+    - Cache-Control
+    - X-Requested-With
+    - X-CSRF-Token
+    - X-Lang
+  allow_credentials: true
+  max_age: 600
+
+security:
+  login_rate_limit:
+    window_seconds: 300
+    max_attempts: 20
+    block_seconds: 300
+  password_policy:
+    min_length: 8
+    require_upper: true
+    require_lower: true
+    require_number: true
+    require_special: false
+
+email:
+  enabled: false
+  host: ""
+  port: 587
+  username: ""
+  password: ""
+  from: ""
+  from_name: "若木云卡"
+  use_tls: true
+  use_ssl: false
+  verify_code:
+    expire_minutes: 10
+    send_interval_seconds: 60
+    max_attempts: 5
+    length: 6
+
+captcha:
+  provider: none
+  scenes:
+    login: false
+    register_send_code: false
+    reset_send_code: false
+    guest_create_order: false
+    gift_card_redeem: false
+
+order:
+  payment_expire_minutes: 15
+  max_refund_days: 30
+
+reseller:
+  enabled: false
+  main_hosts:
+    - localhost
+    - 127.0.0.1
+    - "::1"
+  trusted_forwarded_host: false
+  subdomain_base: ""
+  self_apply_enabled: true
+  settlement_confirm_days: 7
+
+web:
+  admin_path: "/admin"
