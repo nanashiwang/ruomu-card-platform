@@ -1,0 +1,3 @@
+# 若木云卡生产环境编排占位
+# TODO: 根据 Dujiao-Next 三端实际部署方式补充服务。
+services: {}
