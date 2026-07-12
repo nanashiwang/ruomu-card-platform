@@ -115,6 +115,12 @@ security:
     require_lower: true
     require_number: true
     require_special: false
+  user_password_policy:
+    min_length: 8
+    require_upper: false
+    require_lower: true
+    require_number: false
+    require_special: false
 
 email:
   enabled: false

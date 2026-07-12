@@ -225,7 +225,7 @@ func (s *UserAuthService) Register(email, password, code string, agreementAccept
 	if err := s.checkRegistrationEmailDomain(normalized); err != nil {
 		return nil, "", time.Time{}, err
 	}
-	if err := validatePassword(s.cfg.Security.PasswordPolicy, password); err != nil {
+	if err := validatePassword(s.cfg.Security.UserPasswordPolicy, password); err != nil {
 		return nil, "", time.Time{}, err
 	}
 
