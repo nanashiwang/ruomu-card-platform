@@ -2,6 +2,7 @@ package public
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/dujiao-next/internal/constants"
@@ -30,6 +31,54 @@ func (h *Handler) enrichOrderWithAllowedChannels(order *models.Order, detail *dt
 	if len(allowed) > 0 {
 		detail.AllowedPaymentChannelIDs = allowed
 	}
+}
+
+type submitPostPaymentInfoRequest struct {
+	AccountEmail string `json:"account_email" binding:"required"`
+	CurrentPlan  string `json:"current_plan" binding:"required"`
+}
+
+// SubmitPostPaymentInfo 保存已付款订单的账号邮箱和当前套餐。
+func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
+	uid, ok := shared.GetUserID(c)
+	if !ok {
+		return
+	}
+	itemID, err := strconv.ParseUint(strings.TrimSpace(c.Param("item_id")), 10, 64)
+	if err != nil || itemID == 0 {
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		return
+	}
+	var req submitPostPaymentInfoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondBindError(c, err)
+		return
+	}
+
+	order, err := h.OrderService.SubmitPostPaymentInfo(service.SubmitPostPaymentInfoInput{
+		Tenant:       tenantFromRequest(c),
+		OrderNo:      c.Param("order_no"),
+		UserID:       uid,
+		OrderItemID:  uint(itemID),
+		AccountEmail: req.AccountEmail,
+		CurrentPlan:  req.CurrentPlan,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrOrderNotFound):
+			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
+		case errors.Is(err, service.ErrOrderStatusInvalid):
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
+		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的账号邮箱和当前套餐", nil)
+		case errors.Is(err, service.ErrPostPaymentInfoNotRequired):
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		default:
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
+		}
+		return
+	}
+	response.Success(c, dto.NewOrderDetailTruncated(order))
 }
 
 // collectRefundRelevantOrderIDs 收集订单详情应展示退款记录的订单ID（父订单+子订单）。

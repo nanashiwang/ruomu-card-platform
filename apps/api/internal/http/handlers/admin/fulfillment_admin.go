@@ -45,6 +45,8 @@ func (h *Handler) AdminCreateFulfillment(c *gin.Context) {
 			shared.RespondError(c, response.CodeBadRequest, "error.fulfillment_invalid", nil)
 		case errors.Is(err, service.ErrOrderStatusInvalid):
 			shared.RespondError(c, response.CodeBadRequest, "error.order_status_invalid", nil)
+		case errors.Is(err, service.ErrPostPaymentInfoRequired):
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "用户尚未提交付款后所需资料", nil)
 		case errors.Is(err, service.ErrOrderNotFound):
 			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
 		default:

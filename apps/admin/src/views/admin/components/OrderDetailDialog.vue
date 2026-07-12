@@ -235,7 +235,15 @@ const canCreateFulfillment = (order: AdminOrder | null) => {
   if (Array.isArray(order.items) && order.items.length > 0 && !order.items.every((item: AdminOrderItem) => item.fulfillment_type === 'manual')) {
     return false
   }
+  if (Array.isArray(order.items) && order.items.some((item: AdminOrderItem) => item.post_payment_info_required && !item.post_payment_info_submitted_at)) {
+    return false
+  }
   return order.status === 'paid' || order.status === 'fulfilling'
+}
+
+const postPaymentPlanLabel = (value?: string) => {
+  const key = String(value || 'other').toLowerCase()
+  return t(`admin.orders.postPaymentPlans.${key}`)
 }
 
 const canCreateChildFulfillment = (order: AdminOrder | null) => {
@@ -867,6 +875,15 @@ watch(
                         </div>
                       </div>
                     </div>
+                    <div v-if="item.post_payment_info_required" class="mt-3 rounded-lg border p-3" :class="item.post_payment_info_submitted_at ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60'">
+                      <div class="text-xs font-semibold" :class="item.post_payment_info_submitted_at ? 'text-emerald-700' : 'text-amber-700'">
+                        {{ item.post_payment_info_submitted_at ? t('admin.orders.postPaymentInfoSubmitted') : t('admin.orders.postPaymentInfoPending') }}
+                      </div>
+                      <div v-if="item.post_payment_info_submitted_at" class="mt-2 space-y-1 text-xs text-muted-foreground">
+                        <div>{{ t('admin.orders.postPaymentAccountEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_account_email }}</span></div>
+                        <div>{{ t('admin.orders.postPaymentCurrentPlan') }}：<span class="text-foreground">{{ postPaymentPlanLabel(item.post_payment_current_plan) }}</span></div>
+                      </div>
+                    </div>
                   </div>
                   <div class="space-y-1 text-left md:text-right">
                     <div>{{ t('orderDetail.unitPriceLabel') }}：{{ formatMoney(item.original_unit_price, selectedOrder.currency) }}</div>
@@ -955,6 +972,15 @@ watch(
                             <div v-for="row in manualSubmissionRows(item.manual_form_submission, item.manual_form_schema_snapshot)" :key="`${item.id}-${row.key}`" class="break-words">
                               <span class="text-foreground">{{ row.label }}</span>：<span class="break-all">{{ row.value }}</span>
                             </div>
+                          </div>
+                        </div>
+                        <div v-if="item.post_payment_info_required" class="mt-3 rounded-lg border p-3" :class="item.post_payment_info_submitted_at ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60'">
+                          <div class="text-xs font-semibold" :class="item.post_payment_info_submitted_at ? 'text-emerald-700' : 'text-amber-700'">
+                            {{ item.post_payment_info_submitted_at ? t('admin.orders.postPaymentInfoSubmitted') : t('admin.orders.postPaymentInfoPending') }}
+                          </div>
+                          <div v-if="item.post_payment_info_submitted_at" class="mt-2 space-y-1 text-xs text-muted-foreground">
+                            <div>{{ t('admin.orders.postPaymentAccountEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_account_email }}</span></div>
+                            <div>{{ t('admin.orders.postPaymentCurrentPlan') }}：<span class="text-foreground">{{ postPaymentPlanLabel(item.post_payment_current_plan) }}</span></div>
                           </div>
                         </div>
                       </div>

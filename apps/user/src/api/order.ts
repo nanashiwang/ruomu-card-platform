@@ -9,6 +9,8 @@ export const userOrderAPI = {
     list: (params?: any) => userApi.get('/orders', { params }),
     stats: (params?: any) => userApi.get('/orders/stats', { params }),
     detail: (orderNo: string, options?: any) => userApi.get(`/orders/${encodeURIComponent(orderNo)}`, options),
+    submitPostPaymentInfo: (orderNo: string, itemId: number, data: { account_email: string; current_plan: string }) =>
+        userApi.put(`/orders/${encodeURIComponent(orderNo)}/items/${itemId}/post-payment-info`, data),
     cancel: (orderNo: string) => userApi.post(`/orders/${encodeURIComponent(orderNo)}/cancel`),
     downloadFulfillment: (orderNo: string) => userApi.get(`/orders/${encodeURIComponent(orderNo)}/fulfillment/download`, { blob: true }),
 }

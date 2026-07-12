@@ -86,7 +86,10 @@
     <section class="rounded-xl border bg-card p-[22px]">
       <h2 class="mb-4 text-lg font-bold">{{ t('orderDetail.itemsTitle') }}</h2>
       <div v-if="order.items && order.items.length > 0" class="grid">
-        <VaultOrderItem v-for="(item, idx) in order.items" :key="idx" :item="item" :currency="order.currency" />
+        <div v-for="(item, idx) in order.items" :key="idx">
+          <VaultOrderItem :item="item" :currency="order.currency" />
+          <PostPaymentInfoForm v-if="variant === 'user'" :item="item" :order-no="order.order_no" :order-status="order.status" />
+        </div>
       </div>
       <div v-else class="text-[13px] text-muted-foreground">{{ t('orderDetail.noItems') }}</div>
     </section>
@@ -106,7 +109,10 @@
 
           <h3 class="my-2.5 mt-4 text-sm font-bold">{{ t('orderDetail.childItemsTitle') }}</h3>
           <div v-if="child.items && child.items.length" class="grid">
-            <VaultOrderItem v-for="(item, cidx) in child.items" :key="cidx" :item="item" :currency="child.currency || order.currency" />
+            <div v-for="(item, cidx) in child.items" :key="cidx">
+              <VaultOrderItem :item="item" :currency="child.currency || order.currency" />
+              <PostPaymentInfoForm v-if="variant === 'user'" :item="item" :order-no="order.order_no" :order-status="resolvedChildStatus(child)" />
+            </div>
           </div>
           <div v-else class="text-[13px] text-muted-foreground">{{ t('orderDetail.noItems') }}</div>
 
@@ -146,6 +152,7 @@ import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
 import VaultOrderItem from './VaultOrderItem.vue'
 import VaultOrderFulfillment from './VaultOrderFulfillment.vue'
+import PostPaymentInfoForm from '../../../components/order/PostPaymentInfoForm.vue'
 import { useOrderDisplayHelpers } from '../../../composables/useOrderDisplayHelpers'
 
 const props = defineProps<{

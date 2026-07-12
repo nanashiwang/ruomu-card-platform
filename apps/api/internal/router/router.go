@@ -161,6 +161,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			user.GET("/orders", publicHandler.ListOrders)
 			user.GET("/orders/stats", publicHandler.OrderStats)
 			user.GET("/orders/:order_no", publicHandler.GetOrderByOrderNo)
+			user.PUT("/orders/:order_no/items/:item_id/post-payment-info", publicHandler.SubmitPostPaymentInfo)
 			user.GET("/orders/:order_no/fulfillment/download", publicHandler.DownloadFulfillment)
 			user.POST("/orders/:order_no/cancel", publicHandler.CancelOrder)
 			user.POST("/payments", publicHandler.CreatePayment)

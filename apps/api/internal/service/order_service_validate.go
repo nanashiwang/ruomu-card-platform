@@ -245,6 +245,7 @@ func (s *OrderService) buildOrderResult(input orderCreateParams) (*orderBuildRes
 			FulfillmentType:              fulfillmentType,
 			ManualFormSchemaSnapshotJSON: manualSchemaSnapshot,
 			ManualFormSubmissionJSON:     manualSubmission,
+			PostPaymentInfoRequired:      product.PostPaymentInfoRequired,
 			InstructionsJSON:             product.InstructionsJSON,
 			CreatedAt:                    now,
 			UpdatedAt:                    now,

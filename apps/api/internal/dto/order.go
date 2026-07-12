@@ -151,21 +151,24 @@ func truncateFulfillment(d *OrderDetail) {
 
 // OrderItemResp 订单项响应
 type OrderItemResp struct {
-	Title                    models.JSON        `json:"title"`
-	SKUSnapshot              models.JSON        `json:"sku_snapshot"`
-	Tags                     models.StringArray `json:"tags"`
-	Quantity                 int                `json:"quantity"`
-	OriginalUnitPrice        models.Money       `json:"original_unit_price"`
-	UnitPrice                models.Money       `json:"unit_price"`
-	OriginalTotalPrice       models.Money       `json:"original_total_price"`
-	TotalPrice               models.Money       `json:"total_price"`
-	CouponDiscountAmount     models.Money       `json:"coupon_discount_amount"`
-	MemberDiscountAmount     models.Money       `json:"member_discount_amount"`
-	PromotionDiscountAmount  models.Money       `json:"promotion_discount_amount"`
-	WholesaleDiscountAmount  models.Money       `json:"wholesale_discount_amount"`
-	FulfillmentType          string             `json:"fulfillment_type"`
-	ManualFormSchemaSnapshot models.JSON        `json:"manual_form_schema_snapshot"`
-	ManualFormSubmission     models.JSON        `json:"manual_form_submission"`
+	ID                       uint                 `json:"id"`
+	Title                    models.JSON          `json:"title"`
+	SKUSnapshot              models.JSON          `json:"sku_snapshot"`
+	Tags                     models.StringArray   `json:"tags"`
+	Quantity                 int                  `json:"quantity"`
+	OriginalUnitPrice        models.Money         `json:"original_unit_price"`
+	UnitPrice                models.Money         `json:"unit_price"`
+	OriginalTotalPrice       models.Money         `json:"original_total_price"`
+	TotalPrice               models.Money         `json:"total_price"`
+	CouponDiscountAmount     models.Money         `json:"coupon_discount_amount"`
+	MemberDiscountAmount     models.Money         `json:"member_discount_amount"`
+	PromotionDiscountAmount  models.Money         `json:"promotion_discount_amount"`
+	WholesaleDiscountAmount  models.Money         `json:"wholesale_discount_amount"`
+	FulfillmentType          string               `json:"fulfillment_type"`
+	ManualFormSchemaSnapshot models.JSON          `json:"manual_form_schema_snapshot"`
+	ManualFormSubmission     models.JSON          `json:"manual_form_submission"`
+	PostPaymentInfoRequired  bool                 `json:"post_payment_info_required"`
+	PostPaymentInfo          *PostPaymentInfoResp `json:"post_payment_info,omitempty"`
 	// Instructions 交付使用说明（多语言 raw JSON，与 Title 字段契约一致，由前端按 locale 解析）。
 	// 仅在订单已付款时填充，未付款订单会在 NewOrderDetail 中置 nil；列表场景（NewOrderSummary）永远为 nil。
 	// 注意：渠道 API（channel_order.go）为服务端消费者（如 Telegram Bot），那里返回已按 locale 解析的字符串而非 raw JSON。
@@ -177,7 +180,8 @@ func newOrderItemResp(item *models.OrderItem) OrderItemResp {
 	if ft == "upstream" {
 		ft = "manual"
 	}
-	return OrderItemResp{
+	resp := OrderItemResp{
+		ID:                       item.ID,
 		Title:                    item.TitleJSON,
 		SKUSnapshot:              item.SKUSnapshotJSON,
 		Tags:                     item.Tags,
@@ -193,9 +197,25 @@ func newOrderItemResp(item *models.OrderItem) OrderItemResp {
 		FulfillmentType:          ft,
 		ManualFormSchemaSnapshot: item.ManualFormSchemaSnapshotJSON,
 		ManualFormSubmission:     item.ManualFormSubmissionJSON,
+		PostPaymentInfoRequired:  item.PostPaymentInfoRequired,
 		Instructions:             item.InstructionsJSON,
 	}
-	// 注意：CostPrice 不在 DTO 中，白名单模式天然排除
+	if item.PostPaymentInfoSubmittedAt != nil {
+		resp.PostPaymentInfo = &PostPaymentInfoResp{
+			AccountEmail: item.PostPaymentAccountEmail,
+			CurrentPlan:  item.PostPaymentCurrentPlan,
+			SubmittedAt:  item.PostPaymentInfoSubmittedAt,
+		}
+	}
+	// 注意：CostPrice 不在 DTO 中，白名单模式天然排除。
+	return resp
+}
+
+// PostPaymentInfoResp 是用户付款后补充的人工处理资料。
+type PostPaymentInfoResp struct {
+	AccountEmail string     `json:"account_email"`
+	CurrentPlan  string     `json:"current_plan"`
+	SubmittedAt  *time.Time `json:"submitted_at,omitempty"`
 }
 
 // FulfillmentResp 交付记录响应

@@ -207,6 +207,7 @@
                       <span class="text-foreground">{{ row.label }}</span>：{{ row.value }}
                     </div>
                   </div>
+                  <PostPaymentInfoForm :item="item" :order-no="order.order_no" :order-status="order.status" />
                 </div>
               </div>
               <div class="shrink-0 pl-[4.25rem] sm:pl-0 text-left sm:text-right text-sm text-muted-foreground space-y-1">
@@ -287,6 +288,7 @@
                             <span class="text-foreground">{{ row.label }}</span>：{{ row.value }}
                           </div>
                         </div>
+                        <PostPaymentInfoForm :item="item" :order-no="order.order_no" :order-status="resolvedChildStatus(child)" />
                       </div>
                     </div>
                     <div class="shrink-0 pl-[4.25rem] sm:pl-0 text-left sm:text-right text-sm text-muted-foreground space-y-1">
@@ -444,6 +446,7 @@ import EmptyState from '../components/EmptyState.vue'
 import BreadcrumbNav from '../components/BreadcrumbNav.vue'
 import SmartImage from '../components/SmartImage.vue'
 import { useOrderDetail } from '../composables/useOrderDetail'
+import PostPaymentInfoForm from '../components/order/PostPaymentInfoForm.vue'
 
 const { t } = useI18n()
 
