@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPT Pro / Plus 订阅消费用户须知</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --paper: #ffffff;
+      --ink: #17202a;
+      --muted: #5f6b7a;
+      --line: #dfe4ea;
+      --accent: #0f766e;
+      --accent-strong: #0b5f59;
+      --warning-bg: #fff4dc;
+      --warning-line: #f0b429;
+      --danger-bg: #fff0f0;
+      --danger-line: #e5484d;
+      --info-bg: #edf7ff;
+      --info-line: #3a86c8;
+      --radius: 8px;
+      --shadow: 0 18px 45px rgba(21, 30, 43, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      line-height: 1.72;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    a {
+      color: var(--accent-strong);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .page {
+      width: min(980px, calc(100% - 32px));
+      margin: 32px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 34px 40px 28px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent-strong);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+
+    .summary {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    main {
+      padding: 28px 40px 40px;
+    }
+
+    section {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 21px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 1.4em;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .notice {
+      margin: 16px 0 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--info-line);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: var(--info-bg);
+    }
+
+    .notice.warning {
+      border-left-color: var(--warning-line);
+      background: var(--warning-bg);
+    }
+
+    .notice.danger {
+      border-left-color: var(--danger-line);
+      background: var(--danger-bg);
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 18px;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .button:hover {
+      background: var(--accent-strong);
+      text-decoration: none;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tag-list li {
+      margin: 0;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .agreement {
+      padding: 18px;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      background: #f0fdfa;
+      font-weight: 700;
+    }
+
+    .agreement code {
+      display: block;
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--accent-strong);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      white-space: normal;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: 100%;
+        margin: 0;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+      }
+
+      header,
+      main {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      h2 {
+        font-size: 19px;
+      }
+
+      .button {
+        width: 100%;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        width: 100%;
+        margin: 0;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .button {
+        border: 1px solid var(--accent);
+        background: #ffffff;
+        color: var(--accent-strong);
+      }
+    }
+  </style>
+</head>
+<body>
+  <article class="page">
+    <header>
+      <p class="eyebrow">用户须知</p>
+      <h1>GPT Pro / Plus 订阅消费规则说明</h1>
+      <p class="summary">请在提交订单前完整阅读以下条款。提交订单即表示您已理解并接受相关处理时间、账号要求、退款规则及风险说明。</p>
+    </header>
+
+    <main>
+      <section aria-labelledby="operation-time">
+        <h2 id="operation-time">操作提示</h2>
+        <p>订单提交后将由人工处理，通常约 <strong>1-30 分钟</strong> 完成；如遇订单较多，可能延迟至 <strong>1 小时以上</strong>。</p>
+        <p>每日接单时间为 <strong>08:00-22:00</strong>。</p>
+      </section>
+
+      <section aria-labelledby="forbidden">
+        <h2 id="forbidden">禁止提交</h2>
+        <div class="notice danger">
+          <p>目前您的账号为 <strong>Plus / Team / Pro 资格账号</strong>，不允许提交 GPT Pro / Plus 充值订单。</p>
+        </div>
+        <p>如您之前购买过非正常 Pro / Plus，例如：0 元购 Pro / Plus、谷歌内购、低价黑冲等账号，请勿提交。</p>
+        <p>否则可能导致掉订阅、邮件欺诈、模型异常等问题。请更换账号后再提交。</p>
+      </section>
+
+      <section aria-labelledby="terms">
+        <h2 id="terms">服务条款</h2>
+        <ol>
+          <li>
+            <strong>订阅消费说明：</strong>
+            使用本服务进行的所有 GPT Pro / Plus 正价订阅消费将不予退款，除非是因平台或服务本身原因导致的问题。
+          </li>
+          <li>
+            <strong>违规行为处理：</strong>
+            如因客户违规行为导致问题，包括但不限于邮件欺诈、网络滥用、违反平台使用条款等，将无法获得退款。请遵守相关使用规则，确保权益不受损。
+          </li>
+          <li>
+            <strong>账号封禁、KYC 验证、绑定手机号等问题：</strong>
+            若因客户账号封禁、KYC 验证未通过、绑定手机号、人工取消订阅、模型不匹配、模型降智等问题导致无法正常使用服务，客户需自行处理相关问题，且不予退款。
+          </li>
+          <li>
+            <strong>官方退款处理：</strong>
+            如果出现掉订阅情况，需要客户联系 OpenAI【ChatGPT】客服，由官方客服判断是否可以退款并处理相关事宜。本服务不主动代理或保证退款结果。
+          </li>
+          <li>
+            <strong>退款流程及扣款：</strong>
+            在收到退款后，将扣除 <strong>20%</strong> 的处理费用。剩余款项将在扣款后进行退款，退款金额将按实际情况处理。
+          </li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="email">
+        <h2 id="email">建议使用邮箱</h2>
+        <ul class="tag-list">
+          <li>163 邮箱</li>
+          <li>126 邮箱</li>
+          <li>Gmail 邮箱（强烈建议）</li>
+          <li>QQ 邮箱</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="final-note">
+        <h2 id="final-note">温馨提示</h2>
+        <p>请在使用本服务前仔细阅读以上条款。若有任何问题，欢迎随时联系客户服务团队。</p>
+        <div class="agreement">
+          阅读完毕后，请在上方下单用户协议处输入以下内容进行下单：
+          <code>我已阅读并接受本商品全部须知规则与全部协议内容</code>
+        </div>
+      </section>
+    </main>
+  </article>
+</body>
+</html>
