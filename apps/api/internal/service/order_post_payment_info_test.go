@@ -90,6 +90,87 @@ func TestSubmitPostPaymentInfoRequiresPaidOwnedOrder(t *testing.T) {
 	}
 }
 
+func TestSubmitPostPaymentInfoUsesRealChildOrderID(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:child_post_payment_info_%d?mode=memory&cache=shared", time.Now().UnixNano())), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Order{}, &models.OrderItem{}, &models.OrderRefundRecord{}, &models.Fulfillment{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+
+	now := time.Now()
+	parent := &models.Order{
+		OrderNo:        "POST-INFO-PARENT-001",
+		UserID:         7,
+		Status:         constants.OrderStatusPaid,
+		Currency:       "CNY",
+		OriginalAmount: models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		TotalAmount:    models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		PaidAt:         &now,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	repo := repository.NewOrderRepository(db)
+	if err := repo.Create(parent, nil); err != nil {
+		t.Fatalf("create parent order failed: %v", err)
+	}
+
+	child := &models.Order{
+		OrderNo:        "POST-INFO-PARENT-001-01",
+		ParentID:       &parent.ID,
+		UserID:         parent.UserID,
+		Status:         constants.OrderStatusPaid,
+		Currency:       parent.Currency,
+		OriginalAmount: parent.OriginalAmount,
+		TotalAmount:    parent.TotalAmount,
+		PaidAt:         &now,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	item := models.OrderItem{
+		ProductID:               1,
+		SKUID:                   1,
+		TitleJSON:               models.JSON{"zh-CN": "GPT Plus"},
+		Quantity:                1,
+		UnitPrice:               models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		TotalPrice:              models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		FulfillmentType:         constants.FulfillmentTypeManual,
+		PostPaymentInfoRequired: true,
+		CreatedAt:               now,
+		UpdatedAt:               now,
+	}
+	if err := repo.Create(child, []models.OrderItem{item}); err != nil {
+		t.Fatalf("create child order failed: %v", err)
+	}
+	var savedItem models.OrderItem
+	if err := db.Where("order_id = ?", child.ID).First(&savedItem).Error; err != nil {
+		t.Fatalf("load child item failed: %v", err)
+	}
+
+	svc := NewOrderService(OrderServiceOptions{OrderRepo: repo})
+	_, err = svc.SubmitPostPaymentInfo(SubmitPostPaymentInfoInput{
+		Tenant:       MainTenantContext("main.example.test"),
+		OrderNo:      parent.OrderNo,
+		UserID:       parent.UserID,
+		OrderItemID:  savedItem.ID,
+		ContactEmail: "buyer@example.com",
+		CurrentPlan:  "plus",
+		OrderNote:    "父订单页面提交的资料",
+	})
+	if err != nil {
+		t.Fatalf("parent order page should update the real child item: %v", err)
+	}
+	if err := db.First(&savedItem, savedItem.ID).Error; err != nil {
+		t.Fatalf("reload child item failed: %v", err)
+	}
+	if savedItem.OrderID != child.ID || savedItem.PostPaymentContactEmail != "buyer@example.com" || savedItem.PostPaymentCurrentPlan != "plus" || savedItem.PostPaymentOrderNote != "父订单页面提交的资料" || savedItem.PostPaymentInfoSubmittedAt == nil {
+		t.Fatalf("child post-payment info was not saved: %+v", savedItem)
+	}
+}
+
 func TestSubmitGuestPostPaymentInfoRequiresGuestCredentials(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:guest_post_payment_info_%d?mode=memory&cache=shared", time.Now().UnixNano())), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
