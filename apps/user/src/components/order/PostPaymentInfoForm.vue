@@ -37,7 +37,6 @@
           class="min-h-24 resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           :placeholder="t('orderDetail.orderNotePlaceholder')"></textarea>
       </label>
-      <p class="text-xs leading-5 text-muted-foreground">{{ t('orderDetail.postPaymentInfoSafety') }}</p>
       <div class="flex items-center gap-2">
         <button type="submit" :disabled="submitting" class="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60">
           {{ submitting ? t('orderDetail.postPaymentInfoSubmitting') : t('orderDetail.postPaymentInfoSubmit') }}
