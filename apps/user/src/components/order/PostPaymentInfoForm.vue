@@ -6,7 +6,7 @@
     <div v-if="savedInfo && !editing" class="mt-3 space-y-1.5 text-xs">
       <div><span class="text-muted-foreground">{{ t('orderDetail.contactEmailLabel') }}：</span>{{ savedInfo.contact_email }}</div>
       <div><span class="text-muted-foreground">{{ t('orderDetail.currentPlanLabel') }}：</span>{{ planLabel(savedInfo.current_plan) }}</div>
-      <div><span class="text-muted-foreground">{{ t('orderDetail.orderNoteLabel') }}：</span><span class="whitespace-pre-wrap break-words">{{ savedInfo.order_note }}</span></div>
+      <div><span class="text-muted-foreground">{{ t('orderDetail.orderNoteLabel') }}：</span><span class="whitespace-pre-wrap break-words">{{ savedInfo.order_note || '-' }}</span></div>
       <div class="flex flex-wrap items-center gap-2 pt-1">
         <span class="font-medium text-emerald-700 dark:text-emerald-400">{{ t('orderDetail.postPaymentInfoSubmitted') }}</span>
         <button v-if="editable" type="button" class="text-primary hover:underline" @click="editing = true">{{ t('orderDetail.postPaymentInfoEdit') }}</button>
@@ -33,7 +33,7 @@
       </label>
       <label class="grid gap-1.5">
         <span class="text-xs font-medium text-foreground">{{ t('orderDetail.orderNoteLabel') }}</span>
-        <textarea v-model.trim="orderNote" required maxlength="20000" rows="4"
+        <textarea v-model.trim="orderNote" maxlength="20000" rows="4"
           class="min-h-24 resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           :placeholder="t('orderDetail.orderNotePlaceholder')"></textarea>
       </label>
