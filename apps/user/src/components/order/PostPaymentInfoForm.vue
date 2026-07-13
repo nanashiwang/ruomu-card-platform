@@ -33,7 +33,7 @@
       </label>
       <label class="grid gap-1.5">
         <span class="text-xs font-medium text-foreground">{{ t('orderDetail.orderNoteLabel') }}</span>
-        <textarea v-model.trim="orderNote" required maxlength="1000" rows="4"
+        <textarea v-model.trim="orderNote" required maxlength="20000" rows="4"
           class="min-h-24 resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           :placeholder="t('orderDetail.orderNotePlaceholder')"></textarea>
       </label>

@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,19 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
+
+func TestNormalizePostPaymentContactOrderNoteLimit(t *testing.T) {
+	accepted := strings.Repeat("测", postPaymentOrderNoteMaxLength)
+	_, normalized, ok := normalizePostPaymentContact("buyer@example.com", accepted)
+	if !ok || len([]rune(normalized)) != postPaymentOrderNoteMaxLength {
+		t.Fatalf("%d-character order note should be accepted", postPaymentOrderNoteMaxLength)
+	}
+
+	rejected := strings.Repeat("测", postPaymentOrderNoteMaxLength+1)
+	if _, _, ok := normalizePostPaymentContact("buyer@example.com", rejected); ok {
+		t.Fatalf("order note longer than %d characters should be rejected", postPaymentOrderNoteMaxLength)
+	}
+}
 
 func TestSubmitPostPaymentInfoRequiresPaidOwnedOrder(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:post_payment_info_%d?mode=memory&cache=shared", time.Now().UnixNano())), &gorm.Config{

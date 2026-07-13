@@ -47,6 +47,8 @@ var allowedPostPaymentPlans = map[string]struct{}{
 	"other":      {},
 }
 
+const postPaymentOrderNoteMaxLength = 20000
+
 // SubmitPostPaymentInfo 保存用户付款后的联系邮箱、当前套餐和订单备注。
 // 只有订单所有者可在已付款、待人工处理阶段提交或修改。
 func (s *OrderService) SubmitPostPaymentInfo(input SubmitPostPaymentInfoInput) (*models.Order, error) {
@@ -102,7 +104,7 @@ func normalizePostPaymentContact(rawEmail, rawNote string) (string, string, bool
 		return "", "", false
 	}
 	note := strings.TrimSpace(rawNote)
-	if note == "" || len([]rune(note)) > 1000 {
+	if note == "" || len([]rune(note)) > postPaymentOrderNoteMaxLength {
 		return "", "", false
 	}
 	return email, note, true
