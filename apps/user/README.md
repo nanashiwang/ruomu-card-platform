@@ -1,6 +1,6 @@
-# Dujiao-Next User Web
+# 若木云卡用户端
 
-Dujiao-Next User Web is the customer-facing frontend for browsing products, placing orders, and completing payments.
+若木云卡用户端，用于浏览商品、提交订单、完成支付和查询交付信息。
 
 ## Tech Stack
 
@@ -32,4 +32,4 @@ npm run build
 
 ## Online Documentation
 
-- https://dujiao-next.com
+- https://rm.meta-api.vip

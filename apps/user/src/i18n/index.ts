@@ -4,7 +4,7 @@ import { createI18n } from 'vue-i18n'
 const messages = {
     'zh-CN': {
         common: {
-            siteName: 'Dujiao-Next',
+            siteName: '若木云卡',
             loading: '加载中...',
             error: '错误',
             success: '成功',
@@ -116,7 +116,7 @@ const messages = {
         },
         home: {
             hero: {
-                title: 'Dujiao-Next · D&N',
+                title: '若木云卡',
                 subtitle: '专业的产品与服务提供商',
                 cta: '浏览商品',
                 badge: '新一代数字商店',
@@ -216,8 +216,8 @@ const messages = {
         },
         about: {
             title: '关于我们',
-            subtitle: '了解Dujiao-Next',
-            introduction: 'Dujiao-Next（D&N）是一家专业的在线工作室，致力于为客户提供优质的产品和服务。我们以创新、专业、高效为核心价值观，不断追求卓越，为客户创造价值。',
+            subtitle: '了解若木云卡',
+            introduction: '若木云卡是一家专业的在线工作室，致力于为客户提供优质的产品和服务。我们以创新、专业、高效为核心价值观，不断追求卓越，为客户创造价值。',
             ourServices: '我们的服务',
             service1: '优质商品推荐与销售',
             service2: '专业的售前咨询服务',
@@ -1711,7 +1711,7 @@ const messages = {
     },
     'zh-TW': {
         common: {
-            siteName: 'Dujiao-Next',
+            siteName: '若木云卡',
             loading: '載入中...',
             error: '錯誤',
             success: '成功',
@@ -1823,7 +1823,7 @@ const messages = {
         },
         home: {
             hero: {
-                title: 'Dujiao-Next · D&N',
+                title: '若木云卡',
                 subtitle: '專業的產品與服務提供商',
                 cta: '瀏覽商品',
                 badge: '新一代數位商店',
@@ -1970,8 +1970,8 @@ const messages = {
         },
         about: {
             title: '關於我們',
-            subtitle: '了解Dujiao-Next',
-            introduction: 'Dujiao-Next（D&N）是一家專業的線上工作室，致力於為客戶提供優質的產品和服務。我們以創新、專業、高效為核心價值觀，不斷追求卓越，為客戶創造價值。',
+            subtitle: '了解若木云卡',
+            introduction: '若木云卡是一家專業的線上工作室，致力於為客戶提供優質的產品和服務。我們以創新、專業、高效為核心價值觀，不斷追求卓越，為客戶創造價值。',
             ourServices: '我們的服務',
             service1: '優質商品推薦與銷售',
             service2: '專業的售前諮詢服務',
@@ -3418,7 +3418,7 @@ const messages = {
     },
     'en-US': {
         common: {
-            siteName: 'Dujiao-Next',
+            siteName: '若木云卡',
             loading: 'Loading...',
             error: 'Error',
             success: 'Success',
@@ -3530,7 +3530,7 @@ const messages = {
         },
         home: {
             hero: {
-                title: 'Dujiao-Next',
+                title: '若木云卡',
                 subtitle: 'Professional Products and Services Provider',
                 cta: 'Browse Products',
                 badge: 'Next Gen Digital Store',
@@ -3677,8 +3677,8 @@ const messages = {
         },
         about: {
             title: 'About Us',
-            subtitle: 'Learn about Dujiao-Next',
-            introduction: 'Dujiao-Next is a professional online studio dedicated to providing high-quality products and services to our customers. Innovation, professionalism, and efficiency are our core values, and we constantly pursue excellence to create value for our customers.',
+            subtitle: 'Learn about 若木云卡',
+            introduction: '若木云卡 is a professional online studio dedicated to providing high-quality products and services to our customers. Innovation, professionalism, and efficiency are our core values, and we constantly pursue excellence to create value for our customers.',
             ourServices: 'Our Services',
             service1: 'Premium Product Recommendations & Sales',
             service2: 'Professional Pre-sales Consulting',

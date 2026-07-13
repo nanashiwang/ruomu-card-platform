@@ -193,7 +193,7 @@ func (s *EmailService) SendCustomEmail(toEmail, subject, body string) error {
 	}
 	body = strings.TrimSpace(body)
 	if body == "" {
-		body = "这是一封来自 Dujiao-Next 的 SMTP 测试邮件，说明当前配置可正常发送。"
+		body = "这是一封来自 若木云卡 的 SMTP 测试邮件，说明当前配置可正常发送。"
 	}
 	return s.sendTextEmail(toEmail, subject, body)
 }

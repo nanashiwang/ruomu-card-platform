@@ -438,7 +438,7 @@ func TestEmailServiceSendOffice365Integration(t *testing.T) {
 		Username: username,
 		Password: password,
 		From:     from,
-		FromName: "Dujiao Next",
+		FromName: "若木云卡",
 		UseTLS:   true,
 		UseSSL:   false,
 	})

@@ -12,7 +12,7 @@ services:
   api:
     build:
       context: ../apps/api
-    command: ["./dujiao-api", "-mode", "all"]
+    command: ["./ruomu-api", "-mode", "all"]
     depends_on:
       - redis
     environment:

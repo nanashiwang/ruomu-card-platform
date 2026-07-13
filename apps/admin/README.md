@@ -1,6 +1,6 @@
-# Dujiao-Next Admin
+# 若木云卡管理后台
 
-Dujiao-Next Admin is the management console for operating products, orders, users, payment channels, and system settings.
+若木云卡管理后台，用于管理商品、订单、用户、支付渠道和系统设置。
 
 ## Tech Stack
 
@@ -32,4 +32,4 @@ npm run build
 
 ## Online Documentation
 
-- https://dujiao-next.com
+- https://rm.meta-api.vip:8443
