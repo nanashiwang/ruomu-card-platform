@@ -13,7 +13,7 @@ services:
       context: ../apps/api
       args:
         APP_VERSION: ${APP_VERSION:-ruomu-local}
-    command: ["./dujiao-api", "-mode", "all"]
+    command: ["./ruomu-api", "-mode", "all"]
     restart: unless-stopped
     depends_on:
       - redis

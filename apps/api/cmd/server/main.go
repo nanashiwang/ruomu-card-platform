@@ -29,7 +29,7 @@ const (
 )
 
 func main() {
-	// admin 子命令短路：./dujiao-api admin <subcommand>
+	// admin 子命令短路：./ruomu-api admin <subcommand>
 	// 在 banner / web 提示 / migrate / default admin / app.Run 之前处理，
 	// 避免运维操作时打印一堆无关日志。
 	if len(os.Args) >= 2 && os.Args[1] == "admin" {
@@ -114,20 +114,11 @@ func main() {
 
 func printStartupBanner() {
 	fmt.Println(ansiBrightMag + "╔══════════════════════════════════════════════════════════════════════╗" + ansiReset)
-	fmt.Println(ansiBrightMag + "║                      🚀 Dujiao-Next API 启动中                      ║" + ansiReset)
+	fmt.Println(ansiBrightMag + "║                     🚀 若木云卡 API 启动中                     ║" + ansiReset)
 	fmt.Println(ansiBrightMag + "╚══════════════════════════════════════════════════════════════════════╝" + ansiReset)
-	fmt.Println(ansiCyan + "██████╗ ██╗   ██╗     ██╗ █████╗  ██████╗      ███╗   ██╗███████╗██╗  ██╗████████╗" + ansiReset)
-	fmt.Println(ansiCyan + "██╔══██╗██║   ██║     ██║██╔══██╗██╔═══██╗     ████╗  ██║██╔════╝╚██╗██╔╝╚══██╔══╝" + ansiReset)
-	fmt.Println(ansiCyan + "██║  ██║██║   ██║     ██║███████║██║   ██║     ██╔██╗ ██║█████╗   ╚███╔╝    ██║   " + ansiReset)
-	fmt.Println(ansiCyan + "██║  ██║██║   ██║██   ██║██╔══██║██║   ██║     ██║╚██╗██║██╔══╝   ██╔██╗    ██║   " + ansiReset)
-	fmt.Println(ansiCyan + "██████╔╝╚██████╔╝╚█████╔╝██║  ██║╚██████╔╝     ██║ ╚████║███████╗██╔╝ ██╗   ██║   " + ansiReset)
-	fmt.Println(ansiCyan + "╚═════╝  ╚═════╝  ╚════╝ ╚═╝  ╚═╝ ╚═════╝      ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝   ╚═╝   " + ansiReset)
-	fmt.Println(ansiGreen + ansiBold + "Open Source Repositories" + ansiReset)
-	fmt.Println(ansiBlue + "• Root:    https://github.com/dujiao-next" + ansiReset)
-	fmt.Println(ansiBlue + "• API:     https://github.com/dujiao-next/dujiao-next" + ansiReset)
-	fmt.Println(ansiBlue + "• User:    https://github.com/dujiao-next/user" + ansiReset)
-	fmt.Println(ansiBlue + "• Admin:   https://github.com/dujiao-next/admin" + ansiReset)
-	fmt.Println(ansiBlue + "• Official:https://github.com/dujiao-next/document" + ansiReset)
+	fmt.Println(ansiCyan + ansiBold + "RUOMU CLOUD CARD" + ansiReset)
+	fmt.Println(ansiGreen + ansiBold + "Repository" + ansiReset)
+	fmt.Println(ansiBlue + "• https://github.com/nanashiwang/ruomu-card-platform" + ansiReset)
 	fmt.Println(ansiGreen + "Version: " + version.Version + ansiReset)
 	fmt.Println(ansiDim + "--------------------------------------------------------------" + ansiReset)
 }
@@ -145,7 +136,7 @@ func isWeakSecret(secret string) bool {
 	return false
 }
 
-// runAdminSubcommand 处理 ./dujiao-api admin <subcommand>，仅初始化 DB
+// runAdminSubcommand 处理 ./ruomu-api admin <subcommand>，仅初始化 DB
 // 后委托给 internal/admincmd 包，不启动 HTTP / worker / web 等服务。
 func runAdminSubcommand(args []string) {
 	cfg := config.Load()

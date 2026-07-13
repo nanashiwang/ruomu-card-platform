@@ -21,7 +21,7 @@ log "构建 API"
   if [ "$RUN_TESTS" = "1" ]; then
     go test ./...
   fi
-  go build -trimpath -o "$TMP_DIR/dujiao-api" ./cmd/server
+  go build -trimpath -o "$TMP_DIR/ruomu-api" ./cmd/server
 )
 
 log "构建用户前台"

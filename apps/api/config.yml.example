@@ -1,8 +1,8 @@
-# Dujiao-Next 配置文件
+# 若木云卡 配置文件
 
 app:
   secret_key: your-secret-key-change-in-production-please # 务必修改，用于 AES-256 加密敏感数据
-  totp_issuer: Dujiao-Next                          # 后台 2FA 验证器中显示的发行方名称（避免 & 等特殊字符）
+  totp_issuer: 若木云卡                          # 后台 2FA 验证器中显示的发行方名称（避免 & 等特殊字符）
 
 server:
   host: 0.0.0.0
@@ -19,7 +19,7 @@ log:
 
 database:
   driver: sqlite  # sqlite / postgres
-  dsn: ./db/dujiao.db
+  dsn: ./db/ruomu.db
   pool:
     max_open_conns: 1
     max_idle_conns: 1
