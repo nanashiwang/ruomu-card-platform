@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Package } from 'lucide-vue-next'
+import { Copy, Package } from 'lucide-vue-next'
 import { adminAPI } from '@/api/admin'
 import type { AdminOrder, AdminOrderItem, AdminFulfillment, AdminProcurementOrder, AdminPayment } from '@/api/types'
 import IdCell from '@/components/IdCell.vue'
@@ -22,6 +22,8 @@ import {
 } from '@/utils/fulfillment'
 import { formatDate, formatMoney, getLocalizedText, hasPositiveAmount } from '@/utils/format'
 import { resolveSkuCodeFromSnapshot, resolveSkuSpecFromSnapshot } from '@/utils/sku'
+import { copyText } from '@/utils/clipboard'
+import { notifyError, notifySuccess } from '@/utils/notify'
 
 const props = defineProps<{
   modelValue: boolean
@@ -245,6 +247,18 @@ const canCreateFulfillment = (order: AdminOrder | null) => {
 const postPaymentPlanLabel = (value?: string) => {
   const key = String(value || 'other').toLowerCase()
   return t(`admin.orders.postPaymentPlans.${key}`)
+}
+
+const handleCopyOrderNote = async (note?: string) => {
+  const value = String(note || '')
+  if (!value.trim()) return
+
+  try {
+    await copyText(value)
+    notifySuccess(t('admin.common.copied'))
+  } catch {
+    notifyError(t('admin.common.copyFailed'))
+  }
 }
 
 const canCreateChildFulfillment = (order: AdminOrder | null) => {
@@ -887,7 +901,20 @@ watch(
                       <div v-if="item.post_payment_info_submitted_at" class="mt-2 space-y-1 text-xs text-muted-foreground">
                         <div>{{ t('admin.orders.postPaymentContactEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_contact_email }}</span></div>
                         <div>{{ t('admin.orders.postPaymentCurrentPlan') }}：<span class="text-foreground">{{ postPaymentPlanLabel(item.post_payment_current_plan) }}</span></div>
-                        <div>{{ t('admin.orders.postPaymentOrderNote') }}：<span class="whitespace-pre-wrap break-words text-foreground">{{ item.post_payment_order_note }}</span></div>
+                        <div class="flex flex-wrap items-start gap-2">
+                          <span>{{ t('admin.orders.postPaymentOrderNote') }}：</span>
+                          <span class="min-w-0 flex-1 whitespace-pre-wrap break-words text-foreground">{{ item.post_payment_order_note }}</span>
+                          <button
+                            v-if="String(item.post_payment_order_note || '').trim()"
+                            type="button"
+                            class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border/70 bg-background px-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+                            :title="t('admin.common.copy')"
+                            @click="handleCopyOrderNote(item.post_payment_order_note)"
+                          >
+                            <Copy class="h-3 w-3" />
+                            {{ t('admin.common.copy') }}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -987,7 +1014,20 @@ watch(
                           <div v-if="item.post_payment_info_submitted_at" class="mt-2 space-y-1 text-xs text-muted-foreground">
                             <div>{{ t('admin.orders.postPaymentContactEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_contact_email }}</span></div>
                             <div>{{ t('admin.orders.postPaymentCurrentPlan') }}：<span class="text-foreground">{{ postPaymentPlanLabel(item.post_payment_current_plan) }}</span></div>
-                            <div>{{ t('admin.orders.postPaymentOrderNote') }}：<span class="whitespace-pre-wrap break-words text-foreground">{{ item.post_payment_order_note }}</span></div>
+                            <div class="flex flex-wrap items-start gap-2">
+                              <span>{{ t('admin.orders.postPaymentOrderNote') }}：</span>
+                              <span class="min-w-0 flex-1 whitespace-pre-wrap break-words text-foreground">{{ item.post_payment_order_note }}</span>
+                              <button
+                                v-if="String(item.post_payment_order_note || '').trim()"
+                                type="button"
+                                class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border/70 bg-background px-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+                                :title="t('admin.common.copy')"
+                                @click="handleCopyOrderNote(item.post_payment_order_note)"
+                              >
+                                <Copy class="h-3 w-3" />
+                                {{ t('admin.common.copy') }}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
