@@ -42,6 +42,7 @@ const detailLoading = ref(false)
 const detailError = ref('')
 const selectedOrder = ref<AdminOrder | null>(null)
 const procurementOrder = ref<AdminProcurementOrder | null | undefined>(null)
+let detailRequestId = 0
 
 const refundSubmitting = ref(false)
 const refundError = ref('')
@@ -528,16 +529,19 @@ const formatFeeRate = (channel: AdminPayment | { fee_rate: number | string; fixe
 }
 
 const fetchOrderDetail = async (orderId: number) => {
+  const requestId = ++detailRequestId
   detailLoading.value = true
   detailError.value = ''
   selectedOrder.value = null
   procurementOrder.value = null
   try {
     const response = await adminAPI.getOrder(orderId)
+    if (requestId !== detailRequestId) return
     selectedOrder.value = response.data.data
     ensureRefundTabAvailable(selectedOrder.value)
     try {
       const procRes = await adminAPI.getProcurementOrders({ order_no: selectedOrder.value?.order_no, page_size: 1 })
+      if (requestId !== detailRequestId) return
       const procList = procRes.data.data
       if (Array.isArray(procList) && procList.length > 0) {
         procurementOrder.value = procList[0]
@@ -546,9 +550,19 @@ const fetchOrderDetail = async (orderId: number) => {
       // silently ignore - procurement order may not exist
     }
   } catch (err: any) {
+    if (requestId !== detailRequestId) return
     detailError.value = err?.message || t('admin.orders.detailFetchFailed')
   } finally {
-    detailLoading.value = false
+    if (requestId === detailRequestId) {
+      detailLoading.value = false
+    }
+  }
+}
+
+const retryOrderDetail = () => {
+  const orderId = Number(props.order?.id || 0)
+  if (orderId > 0) {
+    fetchOrderDetail(orderId)
   }
 }
 
@@ -627,6 +641,7 @@ const submitManualRefund = async () => {
 }
 
 const handleClose = () => {
+  detailRequestId += 1
   emit('update:modelValue', false)
   selectedOrder.value = null
   detailError.value = ''
@@ -640,27 +655,14 @@ const handleOpenFulfillment = (order: AdminOrder, parentId?: number) => {
   emit('openFulfillment', order, parentId)
 }
 
-// Watch for the order prop to trigger detail fetch
 watch(
-  () => props.order,
-  (newOrder) => {
-    if (newOrder && props.modelValue) {
-      refundTab.value = defaultRefundTab(newOrder)
-      resetRefundForm()
-      resetManualRefundForm()
-      fetchOrderDetail(newOrder.id)
-    }
-  }
-)
-
-watch(
-  () => props.modelValue,
-  (open) => {
-    if (open && props.order) {
+  () => [props.modelValue, props.order?.id] as const,
+  ([open, orderId]) => {
+    if (open && orderId) {
       refundTab.value = defaultRefundTab(props.order)
       resetRefundForm()
       resetManualRefundForm()
-      fetchOrderDetail(props.order.id)
+      fetchOrderDetail(orderId)
     }
     if (!open) {
       handleClose()
@@ -677,8 +679,11 @@ watch(
       </DialogHeader>
       <div class="space-y-6">
         <div v-if="detailLoading" class="h-32 rounded-lg border border-border bg-muted/40 animate-pulse"></div>
-        <div v-else-if="detailError" class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          {{ detailError }}
+        <div v-else-if="detailError" class="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+          <span>{{ detailError }}</span>
+          <Button size="sm" variant="outline" class="shrink-0" @click="retryOrderDetail">
+            {{ t('admin.orders.detailRetry') }}
+          </Button>
         </div>
         <div v-else-if="selectedOrder" class="space-y-6">
           <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 [&>*]:min-w-0">
