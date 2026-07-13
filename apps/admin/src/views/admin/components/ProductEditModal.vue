@@ -155,6 +155,7 @@ const form = reactive({
   max_purchase_quantity: '' as number | '',
   stock_display_mode: 'exact',
   fulfillment_type: 'manual',
+  post_payment_info_required: false,
   manual_stock_total: 0,
   skus: [] as SKUFormItem[],
   category_id: null as number | null,
@@ -497,6 +498,7 @@ const resetForm = () => {
     max_purchase_quantity: '',
     stock_display_mode: 'exact',
     fulfillment_type: 'manual',
+    post_payment_info_required: false,
     manual_stock_total: 0,
     skus: [],
     category_id: null,
@@ -545,6 +547,7 @@ const populateForm = (product: AdminProduct) => {
     max_purchase_quantity: Number(product.max_purchase_quantity || 0) > 0 ? Math.floor(Number(product.max_purchase_quantity || 0)) : '',
     stock_display_mode: product.stock_display_mode || 'exact',
     fulfillment_type: product.fulfillment_type || 'manual',
+    post_payment_info_required: Boolean(product.post_payment_info_required),
     manual_stock_total: resolveManualStockMetrics(product).total,
     skus: Array.isArray(product.skus) ? product.skus.map((item: AdminProductSKU) => createSKUFormItem(item)) : [],
     category_id: Number(product.category_id || 0) || null,
@@ -618,6 +621,7 @@ const handleSubmit = async () => {
       max_purchase_quantity: maxPurchaseQuantityValue,
       stock_display_mode: form.stock_display_mode,
       fulfillment_type: form.fulfillment_type,
+      post_payment_info_required: form.post_payment_info_required,
       manual_stock_total: effectiveManualStockTotal,
       skus: normalizedSKUs,
       payment_channel_ids: form.payment_channel_ids.length > 0 ? form.payment_channel_ids : [],
@@ -858,6 +862,14 @@ watch(
               {{ t('admin.products.form.manualStockTotalSkuTip') }}
             </p>
             <p v-else class="mt-1 text-xs text-muted-foreground">{{ t('admin.products.form.manualStockTotalTip') }}</p>
+          </div>
+
+          <div v-if="form.fulfillment_type === 'manual'" class="col-span-1 md:col-span-2 flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+            <Switch id="post_payment_info_required" v-model="form.post_payment_info_required" />
+            <div>
+              <Label for="post_payment_info_required" class="text-sm font-medium select-none">{{ t('admin.products.form.postPaymentInfoRequired') }}</Label>
+              <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.products.form.postPaymentInfoRequiredTip') }}</p>
+            </div>
           </div>
 
           <div v-if="form.fulfillment_type === 'manual' || editingIsMapped" class="col-span-1 md:col-span-2 rounded-xl border border-border bg-muted/20 p-4 space-y-4">

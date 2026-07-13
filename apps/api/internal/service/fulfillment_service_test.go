@@ -145,3 +145,44 @@ func TestCreateAutoFulfillmentRespectsSKUBoundary(t *testing.T) {
 		t.Fatalf("order status want completed got %s", orderAfter.Status)
 	}
 }
+
+func TestCreateManualRequiresPostPaymentInfo(t *testing.T) {
+	db := setupFulfillmentServiceTestDB(t)
+	now := time.Now()
+	order := &models.Order{
+		OrderNo:     "FULFILL-POST-INFO-001",
+		UserID:      1,
+		Status:      constants.OrderStatusPaid,
+		Currency:    "CNY",
+		TotalAmount: models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := db.Create(order).Error; err != nil {
+		t.Fatalf("create order failed: %v", err)
+	}
+	item := &models.OrderItem{
+		OrderID:                 order.ID,
+		ProductID:               1,
+		SKUID:                   1,
+		TitleJSON:               models.JSON{"zh-CN": "GPT Plus"},
+		Quantity:                1,
+		FulfillmentType:         constants.FulfillmentTypeManual,
+		PostPaymentInfoRequired: true,
+		CreatedAt:               now,
+		UpdatedAt:               now,
+	}
+	if err := db.Create(item).Error; err != nil {
+		t.Fatalf("create item failed: %v", err)
+	}
+
+	svc := NewFulfillmentService(
+		repository.NewOrderRepository(db),
+		repository.NewFulfillmentRepository(db),
+		repository.NewCardSecretRepository(db),
+		nil, nil, config.EmailConfig{}, nil,
+	)
+	if _, err := svc.CreateManual(CreateManualInput{OrderID: order.ID, AdminID: 1, Payload: "done"}); err != ErrPostPaymentInfoRequired {
+		t.Fatalf("missing post-payment info should block fulfillment, got %v", err)
+	}
+}

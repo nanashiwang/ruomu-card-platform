@@ -269,9 +269,18 @@ export function useCheckout() {
     return hasPositiveAmount(amount) ? `-${formatPrice(amount, currency)}` : formatPrice(amount, currency)
   }
 
+  const generateGuestOrderPassword = () => {
+    const bytes = new Uint8Array(18)
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(bytes)
+      return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+    }
+    return `order-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  }
+
   const checkoutMode = ref<'guest' | 'member'>('guest')
   const guestEmail = ref('')
-  const guestPassword = ref('')
+  const guestPassword = ref(generateGuestOrderPassword())
   const guestCaptchaPayload = ref<CaptchaPayload>({})
   const guestTurnstileToken = ref('')
   const guestImageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)

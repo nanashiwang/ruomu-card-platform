@@ -69,6 +69,7 @@ export interface AdminProduct {
   max_purchase_quantity: number
   stock_display_mode: string
   fulfillment_type: string
+  post_payment_info_required: boolean
   manual_form_schema: Record<string, unknown> | null
   manual_stock_total: number
   manual_stock_locked: number
@@ -132,6 +133,10 @@ export interface AdminOrderItem {
   tags?: string[]
   manual_form_schema_snapshot?: Record<string, unknown>
   manual_form_submission?: Record<string, unknown>
+  post_payment_info_required?: boolean
+  post_payment_account_email?: string
+  post_payment_current_plan?: string
+  post_payment_info_submitted_at?: string
   coupon_discount_amount?: number
   promotion_discount_amount?: number
   member_discount_amount?: number

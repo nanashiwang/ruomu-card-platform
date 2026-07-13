@@ -115,20 +115,21 @@ type CreateProductInput struct {
 	CostPriceAmount      decimal.Decimal
 	// WholesalePrices 为可选字段：nil 表示「不修改」（Update 时保留原有批发价），
 	// 非 nil（含空切片）表示以传入内容整体覆盖。Create 时 nil 与空切片等价于无批发价。
-	WholesalePrices     *[]WholesalePriceInput
-	Images              []string
-	Tags                []string
-	PurchaseType        string
-	MinPurchaseQuantity *int
-	MaxPurchaseQuantity *int
-	StockDisplayMode    string
-	FulfillmentType     string
-	ManualStockTotal    *int
-	SKUs                []ProductSKUInput
-	PaymentChannelIDs   []uint
-	IsAffiliateEnabled  *bool
-	IsActive            *bool
-	SortOrder           int
+	WholesalePrices         *[]WholesalePriceInput
+	Images                  []string
+	Tags                    []string
+	PurchaseType            string
+	MinPurchaseQuantity     *int
+	MaxPurchaseQuantity     *int
+	StockDisplayMode        string
+	FulfillmentType         string
+	PostPaymentInfoRequired *bool
+	ManualStockTotal        *int
+	SKUs                    []ProductSKUInput
+	PaymentChannelIDs       []uint
+	IsAffiliateEnabled      *bool
+	IsActive                *bool
+	SortOrder               int
 }
 
 type WholesalePriceInput struct {
@@ -370,31 +371,32 @@ func (s *ProductService) Create(input CreateProductInput) (*models.Product, erro
 	}
 
 	product := models.Product{
-		CategoryID:           input.CategoryID,
-		Slug:                 input.Slug,
-		SeoMetaJSON:          models.JSON(input.SeoMetaJSON),
-		TitleJSON:            models.JSON(input.TitleJSON),
-		DescriptionJSON:      models.JSON(input.DescriptionJSON),
-		ContentJSON:          models.JSON(input.ContentJSON),
-		InstructionsJSON:     models.JSON(input.InstructionsJSON),
-		ManualFormSchemaJSON: models.JSON{},
-		PriceAmount:          models.NewMoneyFromDecimal(priceAmount),
-		CostPriceAmount:      models.NewMoneyFromDecimal(costPriceAmount),
-		WholesalePrices:      models.WholesalePriceTiers{},
-		Images:               models.StringArray(input.Images),
-		Tags:                 models.StringArray(input.Tags),
-		PurchaseType:         purchaseType,
-		MinPurchaseQuantity:  minPurchaseQuantity,
-		MaxPurchaseQuantity:  maxPurchaseQuantity,
-		StockDisplayMode:     stockDisplayMode,
-		FulfillmentType:      fulfillmentType,
-		ManualStockTotal:     manualStockTotal,
-		ManualStockLocked:    0,
-		ManualStockSold:      0,
-		PaymentChannelIDs:    EncodeChannelIDs(paymentChannelIDs),
-		IsAffiliateEnabled:   isAffiliateEnabled,
-		IsActive:             isActive,
-		SortOrder:            input.SortOrder,
+		CategoryID:              input.CategoryID,
+		Slug:                    input.Slug,
+		SeoMetaJSON:             models.JSON(input.SeoMetaJSON),
+		TitleJSON:               models.JSON(input.TitleJSON),
+		DescriptionJSON:         models.JSON(input.DescriptionJSON),
+		ContentJSON:             models.JSON(input.ContentJSON),
+		InstructionsJSON:        models.JSON(input.InstructionsJSON),
+		ManualFormSchemaJSON:    models.JSON{},
+		PriceAmount:             models.NewMoneyFromDecimal(priceAmount),
+		CostPriceAmount:         models.NewMoneyFromDecimal(costPriceAmount),
+		WholesalePrices:         models.WholesalePriceTiers{},
+		Images:                  models.StringArray(input.Images),
+		Tags:                    models.StringArray(input.Tags),
+		PurchaseType:            purchaseType,
+		MinPurchaseQuantity:     minPurchaseQuantity,
+		MaxPurchaseQuantity:     maxPurchaseQuantity,
+		StockDisplayMode:        stockDisplayMode,
+		FulfillmentType:         fulfillmentType,
+		PostPaymentInfoRequired: input.PostPaymentInfoRequired != nil && *input.PostPaymentInfoRequired,
+		ManualStockTotal:        manualStockTotal,
+		ManualStockLocked:       0,
+		ManualStockSold:         0,
+		PaymentChannelIDs:       EncodeChannelIDs(paymentChannelIDs),
+		IsAffiliateEnabled:      isAffiliateEnabled,
+		IsActive:                isActive,
+		SortOrder:               input.SortOrder,
 	}
 	if fulfillmentType == constants.FulfillmentTypeManual {
 		_, normalizedSchemaJSON, err := parseManualFormSchema(models.JSON(input.ManualFormSchemaJSON))
@@ -534,6 +536,9 @@ func (s *ProductService) Update(id string, input CreateProductInput) (*models.Pr
 		fulfillmentType = constants.FulfillmentTypeUpstream
 	}
 	product.FulfillmentType = fulfillmentType
+	if input.PostPaymentInfoRequired != nil {
+		product.PostPaymentInfoRequired = *input.PostPaymentInfoRequired
+	}
 	if fulfillmentType == constants.FulfillmentTypeManual {
 		_, normalizedSchemaJSON, err := parseManualFormSchema(models.JSON(input.ManualFormSchemaJSON))
 		if err != nil {

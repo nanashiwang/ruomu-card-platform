@@ -92,6 +92,12 @@ func (s *FulfillmentService) CreateManual(input CreateManualInput) (*models.Fulf
 	if order.Status != constants.OrderStatusPaid && order.Status != constants.OrderStatusFulfilling {
 		return nil, ErrOrderStatusInvalid
 	}
+	for i := range order.Items {
+		item := &order.Items[i]
+		if item.PostPaymentInfoRequired && item.PostPaymentInfoSubmittedAt == nil {
+			return nil, ErrPostPaymentInfoRequired
+		}
+	}
 
 	now := time.Now()
 	deliveredAt := input.DeliveredAt

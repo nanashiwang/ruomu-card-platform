@@ -152,7 +152,7 @@
           <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.itemsTitle') }}</h2>
           <div v-if="order.items && order.items.length > 0" class="space-y-4">
             <div v-for="(item, idx) in order.items" :key="idx"
-              class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 border-b border-gray-100 pb-3 dark:border-white/5">
+              class="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-3 sm:gap-4 border-b border-gray-100 pb-3 dark:border-white/5">
               <div class="flex min-w-0 items-start gap-3">
                 <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-black/30 sm:h-16 sm:w-16">
                   <img
@@ -211,6 +211,7 @@
                   {{ t('orderDetail.itemPaidAmountLabel') }}：{{ formatItemPaidAmount(item, order.currency) }}
                 </div>
               </div>
+              <PostPaymentInfoForm class="w-full basis-full" :item="item" :order-no="order.order_no" :order-status="order.status" :guest-auth="auth" />
             </div>
           </div>
           <div v-else class="text-sm text-muted-foreground">{{ t('orderDetail.noItems') }}</div>
@@ -237,7 +238,7 @@
                   }}</h3>
                 <div v-if="child.items && child.items.length" class="space-y-3">
                   <div v-for="(item, cidx) in child.items" :key="cidx"
-                    class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-white/5">
+                    class="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-3 sm:gap-4 border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-white/5">
                     <div class="flex min-w-0 items-start gap-3">
                       <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-black/30 sm:h-16 sm:w-16">
                         <img
@@ -295,6 +296,7 @@
                         {{ t('orderDetail.itemPaidAmountLabel') }}：{{ formatItemPaidAmount(item, order.currency) }}
                       </div>
                     </div>
+                    <PostPaymentInfoForm class="w-full basis-full" :item="item" :order-no="order.order_no" :order-status="resolvedChildStatus(child)" :guest-auth="auth" />
                   </div>
                 </div>
                 <div v-else class="text-sm text-muted-foreground">{{ t('orderDetail.noItems') }}</div>
@@ -425,6 +427,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useGuestOrderDetail } from '../composables/useGuestOrderDetail'
+import PostPaymentInfoForm from '../components/order/PostPaymentInfoForm.vue'
 
 const { t } = useI18n()
 
