@@ -134,8 +134,9 @@ export interface AdminOrderItem {
   manual_form_schema_snapshot?: Record<string, unknown>
   manual_form_submission?: Record<string, unknown>
   post_payment_info_required?: boolean
-  post_payment_account_email?: string
+  post_payment_contact_email?: string
   post_payment_current_plan?: string
+  post_payment_order_note?: string
   post_payment_info_submitted_at?: string
   coupon_discount_amount?: number
   promotion_discount_amount?: number

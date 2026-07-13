@@ -34,18 +34,20 @@ func (h *Handler) enrichOrderWithAllowedChannels(order *models.Order, detail *dt
 }
 
 type submitPostPaymentInfoRequest struct {
-	AccountEmail string `json:"account_email" binding:"required"`
+	ContactEmail string `json:"contact_email" binding:"required"`
 	CurrentPlan  string `json:"current_plan" binding:"required"`
+	OrderNote    string `json:"order_note" binding:"required"`
 }
 
 type submitGuestPostPaymentInfoRequest struct {
 	Email         string `json:"email" binding:"required"`
 	OrderPassword string `json:"order_password" binding:"required"`
-	AccountEmail  string `json:"account_email" binding:"required"`
+	ContactEmail  string `json:"contact_email" binding:"required"`
 	CurrentPlan   string `json:"current_plan" binding:"required"`
+	OrderNote     string `json:"order_note" binding:"required"`
 }
 
-// SubmitPostPaymentInfo 保存已付款订单的账号邮箱和当前套餐。
+// SubmitPostPaymentInfo 保存已付款订单的联系邮箱、当前套餐和订单备注。
 func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 	uid, ok := shared.GetUserID(c)
 	if !ok {
@@ -67,8 +69,9 @@ func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 		OrderNo:      c.Param("order_no"),
 		UserID:       uid,
 		OrderItemID:  uint(itemID),
-		AccountEmail: req.AccountEmail,
+		ContactEmail: req.ContactEmail,
 		CurrentPlan:  req.CurrentPlan,
+		OrderNote:    req.OrderNote,
 	})
 	if err != nil {
 		switch {
@@ -77,7 +80,7 @@ func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 		case errors.Is(err, service.ErrOrderStatusInvalid):
 			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
-			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的账号邮箱和当前套餐", nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的联系邮箱、当前套餐和订单备注", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoNotRequired):
 			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		default:
@@ -88,7 +91,7 @@ func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 	response.Success(c, dto.NewOrderDetailTruncated(order))
 }
 
-// SubmitGuestPostPaymentInfo 保存游客已付款订单的账号邮箱和当前套餐。
+// SubmitGuestPostPaymentInfo 保存游客已付款订单的联系邮箱、当前套餐和订单备注。
 func (h *Handler) SubmitGuestPostPaymentInfo(c *gin.Context) {
 	itemID, err := strconv.ParseUint(strings.TrimSpace(c.Param("item_id")), 10, 64)
 	if err != nil || itemID == 0 {
@@ -107,8 +110,9 @@ func (h *Handler) SubmitGuestPostPaymentInfo(c *gin.Context) {
 		GuestEmail:    req.Email,
 		GuestPassword: req.OrderPassword,
 		OrderItemID:   uint(itemID),
-		AccountEmail:  req.AccountEmail,
+		ContactEmail:  req.ContactEmail,
 		CurrentPlan:   req.CurrentPlan,
+		OrderNote:     req.OrderNote,
 	})
 	if err != nil {
 		switch {
@@ -117,7 +121,7 @@ func (h *Handler) SubmitGuestPostPaymentInfo(c *gin.Context) {
 		case errors.Is(err, service.ErrOrderStatusInvalid):
 			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
-			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的账号邮箱和当前套餐", nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的联系邮箱、当前套餐和订单备注", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoNotRequired):
 			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		default:

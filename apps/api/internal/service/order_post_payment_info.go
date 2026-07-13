@@ -18,8 +18,9 @@ type SubmitPostPaymentInfoInput struct {
 	OrderNo      string
 	UserID       uint
 	OrderItemID  uint
-	AccountEmail string
+	ContactEmail string
 	CurrentPlan  string
+	OrderNote    string
 }
 
 // SubmitGuestPostPaymentInfoInput 是游客凭订单查询凭证补充资料的输入。
@@ -29,8 +30,9 @@ type SubmitGuestPostPaymentInfoInput struct {
 	GuestEmail    string
 	GuestPassword string
 	OrderItemID   uint
-	AccountEmail  string
+	ContactEmail  string
 	CurrentPlan   string
+	OrderNote     string
 }
 
 var allowedPostPaymentPlans = map[string]struct{}{
@@ -45,18 +47,17 @@ var allowedPostPaymentPlans = map[string]struct{}{
 	"other":      {},
 }
 
-// SubmitPostPaymentInfo 保存用户付款后的账号邮箱与当前套餐。
+// SubmitPostPaymentInfo 保存用户付款后的联系邮箱、当前套餐和订单备注。
 // 只有订单所有者可在已付款、待人工处理阶段提交或修改。
 func (s *OrderService) SubmitPostPaymentInfo(input SubmitPostPaymentInfoInput) (*models.Order, error) {
 	if input.UserID == 0 || input.OrderItemID == 0 || strings.TrimSpace(input.OrderNo) == "" {
 		return nil, ErrPostPaymentInfoInvalid
 	}
-
-	email := strings.ToLower(strings.TrimSpace(input.AccountEmail))
-	parsedEmail, err := mail.ParseAddress(email)
-	if err != nil || !strings.EqualFold(parsedEmail.Address, email) || len(email) > 254 {
+	contactEmail, orderNote, ok := normalizePostPaymentContact(input.ContactEmail, input.OrderNote)
+	if !ok {
 		return nil, ErrPostPaymentInfoInvalid
 	}
+
 	plan := strings.ToLower(strings.TrimSpace(input.CurrentPlan))
 	if _, ok := allowedPostPaymentPlans[plan]; !ok {
 		return nil, ErrPostPaymentInfoInvalid
@@ -66,7 +67,7 @@ func (s *OrderService) SubmitPostPaymentInfo(input SubmitPostPaymentInfoInput) (
 	if err != nil {
 		return nil, err
 	}
-	return s.savePostPaymentInfo(order, input.OrderItemID, email, plan, func() (*models.Order, error) {
+	return s.savePostPaymentInfo(order, input.OrderItemID, contactEmail, plan, orderNote, func() (*models.Order, error) {
 		return s.GetOrderByUserOrderNoForTenant(input.Tenant, input.OrderNo, input.UserID)
 	})
 }
@@ -76,9 +77,8 @@ func (s *OrderService) SubmitGuestPostPaymentInfo(input SubmitGuestPostPaymentIn
 	if input.OrderItemID == 0 || strings.TrimSpace(input.OrderNo) == "" || strings.TrimSpace(input.GuestEmail) == "" || strings.TrimSpace(input.GuestPassword) == "" {
 		return nil, ErrPostPaymentInfoInvalid
 	}
-	email := strings.ToLower(strings.TrimSpace(input.AccountEmail))
-	parsedEmail, err := mail.ParseAddress(email)
-	if err != nil || !strings.EqualFold(parsedEmail.Address, email) || len(email) > 254 {
+	contactEmail, orderNote, ok := normalizePostPaymentContact(input.ContactEmail, input.OrderNote)
+	if !ok {
 		return nil, ErrPostPaymentInfoInvalid
 	}
 	plan := strings.ToLower(strings.TrimSpace(input.CurrentPlan))
@@ -90,12 +90,25 @@ func (s *OrderService) SubmitGuestPostPaymentInfo(input SubmitGuestPostPaymentIn
 	if err != nil {
 		return nil, err
 	}
-	return s.savePostPaymentInfo(order, input.OrderItemID, email, plan, func() (*models.Order, error) {
+	return s.savePostPaymentInfo(order, input.OrderItemID, contactEmail, plan, orderNote, func() (*models.Order, error) {
 		return s.GetOrderByGuestOrderNoForTenant(input.Tenant, input.OrderNo, input.GuestEmail, input.GuestPassword)
 	})
 }
 
-func (s *OrderService) savePostPaymentInfo(order *models.Order, orderItemID uint, email, plan string, reload func() (*models.Order, error)) (*models.Order, error) {
+func normalizePostPaymentContact(rawEmail, rawNote string) (string, string, bool) {
+	email := strings.ToLower(strings.TrimSpace(rawEmail))
+	parsedEmail, err := mail.ParseAddress(email)
+	if err != nil || !strings.EqualFold(parsedEmail.Address, email) || len(email) > 254 {
+		return "", "", false
+	}
+	note := strings.TrimSpace(rawNote)
+	if note == "" || len([]rune(note)) > 1000 {
+		return "", "", false
+	}
+	return email, note, true
+}
+
+func (s *OrderService) savePostPaymentInfo(order *models.Order, orderItemID uint, contactEmail, plan, orderNote string, reload func() (*models.Order, error)) (*models.Order, error) {
 
 	var target *models.OrderItem
 	targetStatus := order.Status
@@ -128,8 +141,10 @@ func (s *OrderService) savePostPaymentInfo(order *models.Order, orderItemID uint
 		result := tx.Model(&models.OrderItem{}).
 			Where("id = ? AND order_id = ? AND post_payment_info_required = ?", target.ID, target.OrderID, true).
 			Updates(map[string]interface{}{
-				"post_payment_account_email":     email,
+				"post_payment_account_email":     "",
+				"post_payment_contact_email":     contactEmail,
 				"post_payment_current_plan":      plan,
+				"post_payment_order_note":        orderNote,
 				"post_payment_info_submitted_at": now,
 				"updated_at":                     now,
 			})
