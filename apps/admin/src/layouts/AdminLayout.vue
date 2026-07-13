@@ -803,11 +803,13 @@ onBeforeUnmount(() => {
         :class="sidebarCollapsed ? 'w-16' : 'w-64'"
       >
         <div class="py-6" :class="sidebarCollapsed ? 'px-2' : 'px-6'">
-          <div v-if="!sidebarCollapsed" class="text-xl font-semibold tracking-tight">
-            {{ t('admin.brand') }}
+          <div v-if="!sidebarCollapsed">
+            <img src="/brand/ruomu-logo.webp" alt="若木云卡" class="h-11 max-w-full object-contain object-left" />
           </div>
           <div v-if="!sidebarCollapsed" class="text-xs text-muted-foreground mt-1">{{ t('admin.layout.controlRoom') }}</div>
-          <div v-if="sidebarCollapsed" class="text-lg font-semibold tracking-tight text-center">D&J</div>
+          <div v-if="sidebarCollapsed" class="mx-auto h-9 w-9 overflow-hidden rounded-lg" title="若木云卡">
+            <img src="/brand/ruomu-logo.webp" alt="若木云卡" class="h-9 max-w-none" />
+          </div>
         </div>
         <div v-if="!sidebarCollapsed" class="px-3 pb-2">
           <Input
@@ -922,9 +924,7 @@ onBeforeUnmount(() => {
         <SheetContent side="left" class="w-72 p-0 flex flex-col">
           <SheetTitle class="sr-only">{{ t('admin.layout.navigation') }}</SheetTitle>
           <div class="px-6 py-6">
-            <div class="text-xl font-semibold tracking-tight">
-              {{ t('admin.brand') }}
-            </div>
+            <img src="/brand/ruomu-logo.webp" alt="若木云卡" class="h-11 max-w-full object-contain object-left" />
             <div class="text-xs text-muted-foreground mt-1">{{ t('admin.layout.controlRoom') }}</div>
           </div>
           <div class="px-3 pb-2">

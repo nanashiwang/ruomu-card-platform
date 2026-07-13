@@ -10,14 +10,14 @@
               v-if="brandLogo"
               :src="brandLogo"
               :alt="brandSiteName"
-              class="h-9 max-w-[180px] object-contain"
+              class="h-12 max-w-[200px] object-contain"
             />
             <div
               v-else
               class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span class="text-primary-foreground font-black text-sm">{{ brandInitial }}</span>
             </div>
-            <h3 class="text-foreground text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
+            <h3 v-if="!brandLogo" class="text-foreground text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
           </div>
           <p class="text-sm leading-relaxed max-w-sm text-muted-foreground">
             {{ brandDescription || t('footer.description') }}
@@ -155,7 +155,7 @@ const brandInitial = computed(() => {
 
 const brandLogo = computed(() => {
   const raw = String(config.value?.brand?.site_logo || '').trim()
-  return raw ? getImageUrl(raw) : ''
+  return getImageUrl(raw || '/brand/ruomu-logo.webp')
 })
 
 const isListMode = computed(() => config.value?.template_mode === 'list')
