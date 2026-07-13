@@ -49,7 +49,7 @@
         </div>
 
         <!-- Contact -->
-        <div>
+        <div v-if="hasContact">
           <h4 class="text-foreground font-bold mb-6 tracking-wide">{{ t('footer.contact') }}</h4>
           <div class="space-y-4">
             <a v-if="config?.contact?.telegram" :href="config.contact.telegram" target="_blank"
@@ -127,6 +127,13 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const config = computed(() => appStore.config)
+
+const hasContact = computed(() => {
+  return Boolean(
+    String(config.value?.contact?.telegram || '').trim()
+    || String(config.value?.contact?.whatsapp || '').trim(),
+  )
+})
 
 const brandSiteName = computed(() => {
   const siteName = config.value?.brand?.site_name
