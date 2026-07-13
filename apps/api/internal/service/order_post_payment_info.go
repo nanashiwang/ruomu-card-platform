@@ -109,25 +109,34 @@ func normalizePostPaymentContact(rawEmail, rawNote string) (string, string, bool
 }
 
 func (s *OrderService) savePostPaymentInfo(order *models.Order, orderItemID uint, contactEmail, plan, orderNote string, reload func() (*models.Order, error)) (*models.Order, error) {
-
 	var target *models.OrderItem
+	targetOrderID := order.ID
 	targetStatus := order.Status
-	for i := range order.Items {
-		if order.Items[i].ID == orderItemID {
-			target = &order.Items[i]
-			break
-		}
-	}
-	if target == nil {
-		return nil, ErrPostPaymentInfoNotRequired
-	}
-	if target.OrderID != order.ID {
-		for i := range order.Children {
-			if order.Children[i].ID == target.OrderID {
+	// 父订单详情会把子订单商品复制到 order.Items 供前端兼容展示，并把副本的
+	// OrderID 改成父订单 ID。保存资料时必须优先定位真实的子订单项，不能使用副本。
+	for i := range order.Children {
+		for j := range order.Children[i].Items {
+			if order.Children[i].Items[j].ID == orderItemID {
+				target = &order.Children[i].Items[j]
+				targetOrderID = order.Children[i].ID
 				targetStatus = order.Children[i].Status
 				break
 			}
 		}
+		if target != nil {
+			break
+		}
+	}
+	if target == nil {
+		for i := range order.Items {
+			if order.Items[i].ID == orderItemID {
+				target = &order.Items[i]
+				break
+			}
+		}
+	}
+	if target == nil {
+		return nil, ErrPostPaymentInfoNotRequired
 	}
 	if targetStatus != constants.OrderStatusPaid && targetStatus != constants.OrderStatusFulfilling {
 		return nil, ErrOrderStatusInvalid
@@ -139,7 +148,7 @@ func (s *OrderService) savePostPaymentInfo(order *models.Order, orderItemID uint
 	now := time.Now()
 	err := s.orderRepo.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&models.OrderItem{}).
-			Where("id = ? AND order_id = ? AND post_payment_info_required = ?", target.ID, target.OrderID, true).
+			Where("id = ? AND order_id = ? AND post_payment_info_required = ?", target.ID, targetOrderID, true).
 			Updates(map[string]interface{}{
 				"post_payment_account_email":     "",
 				"post_payment_contact_email":     contactEmail,

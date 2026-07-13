@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -46,8 +48,15 @@ func InitDB(driver, dsn string, pool DBPoolConfig) error {
 	default:
 		return fmt.Errorf("unsupported database driver: %s", driver)
 	}
+	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
+		SlowThreshold:             200 * time.Millisecond,
+		LogLevel:                  logger.Info,
+		IgnoreRecordNotFoundError: false,
+		ParameterizedQueries:      true,
+		Colorful:                  true,
+	})
 	DB, err = gorm.Open(dialector, &gorm.Config{
-		Logger:  logger.Default.LogMode(logger.Info),
+		Logger:  dbLogger,
 		NowFunc: func() time.Time { return time.Now().UTC() },
 	})
 	if err != nil {
