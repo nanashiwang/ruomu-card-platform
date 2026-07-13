@@ -988,6 +988,7 @@ const messages = {
         postPaymentCurrentPlan: '当前套餐',
         postPaymentPlans: { free: 'Free（免费版）', go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', team: 'Team', enterprise: 'Enterprise', edu: 'Edu', other: '其他' },
         detailFetchFailed: '订单详情获取失败',
+        detailRetry: '重试加载',
       },
       payments: {
         title: '支付记录',
@@ -5253,6 +5254,7 @@ const messages = {
         postPaymentCurrentPlan: '目前方案',
         postPaymentPlans: { free: 'Free（免費版）', go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', team: 'Team', enterprise: 'Enterprise', edu: 'Edu', other: '其他' },
         detailFetchFailed: '訂單詳情取得失敗',
+        detailRetry: '重試載入',
       },
       payments: {
         title: '支付紀錄',
@@ -9518,6 +9520,7 @@ const messages = {
         postPaymentCurrentPlan: 'Current plan',
         postPaymentPlans: { free: 'Free', go: 'Go', plus: 'Plus', pro: 'Pro', business: 'Business', team: 'Team', enterprise: 'Enterprise', edu: 'Edu', other: 'Other' },
         detailFetchFailed: 'Failed to load order detail',
+        detailRetry: 'Retry',
       },
       payments: {
         title: 'Payments',

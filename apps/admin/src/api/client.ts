@@ -66,7 +66,9 @@ function getHttpErrorMessage(status: number): string {
 }
 
 const baseURL = `${API_BASE_URL}${API_PREFIX}`
-const timeout = 10000
+// Admin pages often load richer order data and may pass through a proxied
+// management port. Allow transient network jitter before surfacing an error.
+const timeout = 30000
 
 function responseHeadersToObject(headers: Headers): Record<string, string> {
   const result: Record<string, string> = {}
