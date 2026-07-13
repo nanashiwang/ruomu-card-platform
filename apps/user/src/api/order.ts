@@ -9,7 +9,7 @@ export const userOrderAPI = {
     list: (params?: any) => userApi.get('/orders', { params }),
     stats: (params?: any) => userApi.get('/orders/stats', { params }),
     detail: (orderNo: string, options?: any) => userApi.get(`/orders/${encodeURIComponent(orderNo)}`, options),
-    submitPostPaymentInfo: (orderNo: string, itemId: number, data: { account_email: string; current_plan: string }) =>
+    submitPostPaymentInfo: (orderNo: string, itemId: number, data: { contact_email: string; current_plan: string; order_note: string }) =>
         userApi.put(`/orders/${encodeURIComponent(orderNo)}/items/${itemId}/post-payment-info`, data),
     cancel: (orderNo: string) => userApi.post(`/orders/${encodeURIComponent(orderNo)}/cancel`),
     downloadFulfillment: (orderNo: string) => userApi.get(`/orders/${encodeURIComponent(orderNo)}/fulfillment/download`, { blob: true }),
@@ -21,7 +21,7 @@ export const guestOrderAPI = {
     createAndPay: (data: any) => userApi.post('/guest/orders/create-and-pay', data),
     list: (params: any) => userApi.get('/guest/orders', { params }),
     detail: (orderNo: string, params: any, options?: any) => userApi.get(`/guest/orders/${encodeURIComponent(orderNo)}`, { params, ...(options || {}) }),
-    submitPostPaymentInfo: (orderNo: string, itemId: number, data: { email: string; order_password: string; account_email: string; current_plan: string }) =>
+    submitPostPaymentInfo: (orderNo: string, itemId: number, data: { email: string; order_password: string; contact_email: string; current_plan: string; order_note: string }) =>
         userApi.put(`/guest/orders/${encodeURIComponent(orderNo)}/items/${itemId}/post-payment-info`, data),
     downloadFulfillment: (orderNo: string, params: any) => userApi.get(`/guest/orders/${encodeURIComponent(orderNo)}/fulfillment/download`, { params, blob: true }),
     createPayment: (data: any) => userApi.post('/guest/payments', data),

@@ -202,8 +202,9 @@ func newOrderItemResp(item *models.OrderItem) OrderItemResp {
 	}
 	if item.PostPaymentInfoSubmittedAt != nil {
 		resp.PostPaymentInfo = &PostPaymentInfoResp{
-			AccountEmail: item.PostPaymentAccountEmail,
+			ContactEmail: item.PostPaymentContactEmail,
 			CurrentPlan:  item.PostPaymentCurrentPlan,
+			OrderNote:    item.PostPaymentOrderNote,
 			SubmittedAt:  item.PostPaymentInfoSubmittedAt,
 		}
 	}
@@ -213,8 +214,9 @@ func newOrderItemResp(item *models.OrderItem) OrderItemResp {
 
 // PostPaymentInfoResp 是用户付款后补充的人工处理资料。
 type PostPaymentInfoResp struct {
-	AccountEmail string     `json:"account_email"`
+	ContactEmail string     `json:"contact_email"`
 	CurrentPlan  string     `json:"current_plan"`
+	OrderNote    string     `json:"order_note"`
 	SubmittedAt  *time.Time `json:"submitted_at,omitempty"`
 }
 

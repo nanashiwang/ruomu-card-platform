@@ -31,8 +31,10 @@ type OrderItem struct {
 	ManualFormSchemaSnapshotJSON JSON           `gorm:"type:json" json:"manual_form_schema_snapshot"`                           // 人工交付表单 schema 快照
 	ManualFormSubmissionJSON     JSON           `gorm:"type:json" json:"manual_form_submission"`                                // 人工交付表单提交值
 	PostPaymentInfoRequired      bool           `gorm:"not null;default:false" json:"post_payment_info_required"`               // 支付后补充资料要求快照
-	PostPaymentAccountEmail      string         `gorm:"type:varchar(254)" json:"post_payment_account_email"`                    // 用户提交的账号邮箱
+	PostPaymentAccountEmail      string         `gorm:"type:varchar(254)" json:"-"`                                             // 兼容旧数据，不再收集或返回
+	PostPaymentContactEmail      string         `gorm:"type:varchar(254)" json:"post_payment_contact_email"`                    // 订单沟通联系邮箱（不是业务账号）
 	PostPaymentCurrentPlan       string         `gorm:"type:varchar(32)" json:"post_payment_current_plan"`                      // 用户提交的当前套餐
+	PostPaymentOrderNote         string         `gorm:"type:text" json:"post_payment_order_note"`                              // 用户提交的订单备注
 	PostPaymentInfoSubmittedAt   *time.Time     `json:"post_payment_info_submitted_at,omitempty"`                               // 资料最后提交时间
 	InstructionsJSON             JSON           `gorm:"type:json" json:"instructions"`                                          // 交付后使用说明快照（多语言）
 	CreatedAt                    time.Time      `gorm:"index" json:"created_at"`                                                // 创建时间

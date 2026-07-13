@@ -63,8 +63,9 @@ func TestSubmitPostPaymentInfoRequiresPaidOwnedOrder(t *testing.T) {
 		OrderNo:      order.OrderNo,
 		UserID:       order.UserID,
 		OrderItemID:  savedItem.ID,
-		AccountEmail: "buyer@example.com",
+		ContactEmail: "buyer@example.com",
 		CurrentPlan:  "free",
+		OrderNote:    "请通过邮箱联系我处理订单",
 	}
 	if _, err := svc.SubmitPostPaymentInfo(input); err != ErrOrderStatusInvalid {
 		t.Fatalf("pending order should reject submission, got %v", err)
@@ -79,7 +80,7 @@ func TestSubmitPostPaymentInfoRequiresPaidOwnedOrder(t *testing.T) {
 	if err := db.First(&savedItem, savedItem.ID).Error; err != nil {
 		t.Fatalf("reload item failed: %v", err)
 	}
-	if savedItem.PostPaymentAccountEmail != "buyer@example.com" || savedItem.PostPaymentCurrentPlan != "free" || savedItem.PostPaymentInfoSubmittedAt == nil {
+	if savedItem.PostPaymentAccountEmail != "" || savedItem.PostPaymentContactEmail != "buyer@example.com" || savedItem.PostPaymentCurrentPlan != "free" || savedItem.PostPaymentOrderNote != "请通过邮箱联系我处理订单" || savedItem.PostPaymentInfoSubmittedAt == nil {
 		t.Fatalf("post-payment info was not saved: %+v", savedItem)
 	}
 
@@ -125,7 +126,7 @@ func TestSubmitGuestPostPaymentInfoRequiresGuestCredentials(t *testing.T) {
 	input := SubmitGuestPostPaymentInfoInput{
 		Tenant: MainTenantContext("main.example.test"), OrderNo: order.OrderNo,
 		GuestEmail: order.GuestEmail, GuestPassword: order.GuestPassword, OrderItemID: savedItem.ID,
-		AccountEmail: "account@example.com", CurrentPlan: "free",
+		ContactEmail: "contact@example.com", CurrentPlan: "free", OrderNote: "游客订单备注",
 	}
 	if _, err := svc.SubmitGuestPostPaymentInfo(input); err != nil {
 		t.Fatalf("valid guest credentials should accept submission: %v", err)

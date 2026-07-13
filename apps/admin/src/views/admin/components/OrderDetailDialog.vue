@@ -885,8 +885,9 @@ watch(
                         {{ item.post_payment_info_submitted_at ? t('admin.orders.postPaymentInfoSubmitted') : t('admin.orders.postPaymentInfoPending') }}
                       </div>
                       <div v-if="item.post_payment_info_submitted_at" class="mt-2 space-y-1 text-xs text-muted-foreground">
-                        <div>{{ t('admin.orders.postPaymentAccountEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_account_email }}</span></div>
+                        <div>{{ t('admin.orders.postPaymentContactEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_contact_email }}</span></div>
                         <div>{{ t('admin.orders.postPaymentCurrentPlan') }}：<span class="text-foreground">{{ postPaymentPlanLabel(item.post_payment_current_plan) }}</span></div>
+                        <div>{{ t('admin.orders.postPaymentOrderNote') }}：<span class="whitespace-pre-wrap break-words text-foreground">{{ item.post_payment_order_note }}</span></div>
                       </div>
                     </div>
                   </div>
@@ -984,8 +985,9 @@ watch(
                             {{ item.post_payment_info_submitted_at ? t('admin.orders.postPaymentInfoSubmitted') : t('admin.orders.postPaymentInfoPending') }}
                           </div>
                           <div v-if="item.post_payment_info_submitted_at" class="mt-2 space-y-1 text-xs text-muted-foreground">
-                            <div>{{ t('admin.orders.postPaymentAccountEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_account_email }}</span></div>
+                            <div>{{ t('admin.orders.postPaymentContactEmail') }}：<span class="break-all text-foreground">{{ item.post_payment_contact_email }}</span></div>
                             <div>{{ t('admin.orders.postPaymentCurrentPlan') }}：<span class="text-foreground">{{ postPaymentPlanLabel(item.post_payment_current_plan) }}</span></div>
+                            <div>{{ t('admin.orders.postPaymentOrderNote') }}：<span class="whitespace-pre-wrap break-words text-foreground">{{ item.post_payment_order_note }}</span></div>
                           </div>
                         </div>
                       </div>
