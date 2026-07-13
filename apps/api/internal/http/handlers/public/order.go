@@ -36,7 +36,7 @@ func (h *Handler) enrichOrderWithAllowedChannels(order *models.Order, detail *dt
 type submitPostPaymentInfoRequest struct {
 	ContactEmail string `json:"contact_email" binding:"required"`
 	CurrentPlan  string `json:"current_plan" binding:"required"`
-	OrderNote    string `json:"order_note" binding:"required"`
+	OrderNote    string `json:"order_note"`
 }
 
 type submitGuestPostPaymentInfoRequest struct {
@@ -44,7 +44,7 @@ type submitGuestPostPaymentInfoRequest struct {
 	OrderPassword string `json:"order_password" binding:"required"`
 	ContactEmail  string `json:"contact_email" binding:"required"`
 	CurrentPlan   string `json:"current_plan" binding:"required"`
-	OrderNote     string `json:"order_note" binding:"required"`
+	OrderNote     string `json:"order_note"`
 }
 
 // SubmitPostPaymentInfo 保存已付款订单的联系邮箱、当前套餐和订单备注。
@@ -80,7 +80,7 @@ func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 		case errors.Is(err, service.ErrOrderStatusInvalid):
 			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
-			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的联系邮箱、当前套餐和订单备注", nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的联系邮箱和当前套餐，订单备注最多 20000 字", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoNotRequired):
 			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		default:
@@ -121,7 +121,7 @@ func (h *Handler) SubmitGuestPostPaymentInfo(c *gin.Context) {
 		case errors.Is(err, service.ErrOrderStatusInvalid):
 			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
-			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的联系邮箱、当前套餐和订单备注", nil)
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的联系邮箱和当前套餐，订单备注最多 20000 字", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoNotRequired):
 			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
 		default:

@@ -104,7 +104,7 @@ func normalizePostPaymentContact(rawEmail, rawNote string) (string, string, bool
 		return "", "", false
 	}
 	note := strings.TrimSpace(rawNote)
-	if note == "" || len([]rune(note)) > postPaymentOrderNoteMaxLength {
+	if len([]rune(note)) > postPaymentOrderNoteMaxLength {
 		return "", "", false
 	}
 	return email, note, true

@@ -16,8 +16,13 @@ import (
 )
 
 func TestNormalizePostPaymentContactOrderNoteLimit(t *testing.T) {
+	email, normalized, ok := normalizePostPaymentContact(" Buyer@Example.com ", "   ")
+	if !ok || email != "buyer@example.com" || normalized != "" {
+		t.Fatalf("empty order note should be accepted and normalized, got email=%q note=%q ok=%v", email, normalized, ok)
+	}
+
 	accepted := strings.Repeat("测", postPaymentOrderNoteMaxLength)
-	_, normalized, ok := normalizePostPaymentContact("buyer@example.com", accepted)
+	_, normalized, ok = normalizePostPaymentContact("buyer@example.com", accepted)
 	if !ok || len([]rune(normalized)) != postPaymentOrderNoteMaxLength {
 		t.Fatalf("%d-character order note should be accepted", postPaymentOrderNoteMaxLength)
 	}
@@ -96,6 +101,17 @@ func TestSubmitPostPaymentInfoRequiresPaidOwnedOrder(t *testing.T) {
 	}
 	if savedItem.PostPaymentAccountEmail != "" || savedItem.PostPaymentContactEmail != "buyer@example.com" || savedItem.PostPaymentCurrentPlan != "free" || savedItem.PostPaymentOrderNote != "请通过邮箱联系我处理订单" || savedItem.PostPaymentInfoSubmittedAt == nil {
 		t.Fatalf("post-payment info was not saved: %+v", savedItem)
+	}
+
+	input.OrderNote = "   "
+	if _, err := svc.SubmitPostPaymentInfo(input); err != nil {
+		t.Fatalf("empty order note should be accepted: %v", err)
+	}
+	if err := db.First(&savedItem, savedItem.ID).Error; err != nil {
+		t.Fatalf("reload item with empty order note failed: %v", err)
+	}
+	if savedItem.PostPaymentOrderNote != "" {
+		t.Fatalf("empty order note should be stored as an empty string, got %q", savedItem.PostPaymentOrderNote)
 	}
 
 	input.UserID = 8
