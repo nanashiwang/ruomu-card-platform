@@ -305,7 +305,7 @@ func Load() *Config {
 	viper.SetDefault("log.max_age_days", 30)
 	viper.SetDefault("log.compress", true)
 	viper.SetDefault("database.driver", "sqlite")
-	viper.SetDefault("database.dsn", "./db/dujiao.db")
+	viper.SetDefault("database.dsn", "./db/ruomu.db")
 	viper.SetDefault("database.pool.max_open_conns", 1)
 	viper.SetDefault("database.pool.max_idle_conns", 1)
 	viper.SetDefault("database.pool.conn_max_lifetime_seconds", 0)

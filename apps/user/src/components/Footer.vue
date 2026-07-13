@@ -10,14 +10,14 @@
               v-if="brandLogo"
               :src="brandLogo"
               :alt="brandSiteName"
-              class="h-9 max-w-[180px] object-contain"
+              class="h-12 max-w-[200px] object-contain"
             />
             <div
               v-else
               class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span class="text-primary-foreground font-black text-sm">{{ brandInitial }}</span>
             </div>
-            <h3 class="text-foreground text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
+            <h3 v-if="!brandLogo" class="text-foreground text-xl font-bold tracking-tight">{{ brandSiteName }}</h3>
           </div>
           <p class="text-sm leading-relaxed max-w-sm text-muted-foreground">
             {{ brandDescription || t('footer.description') }}
@@ -49,7 +49,7 @@
         </div>
 
         <!-- Contact -->
-        <div>
+        <div v-if="hasContact">
           <h4 class="text-foreground font-bold mb-6 tracking-wide">{{ t('footer.contact') }}</h4>
           <div class="space-y-4">
             <a v-if="config?.contact?.telegram" :href="config.contact.telegram" target="_blank"
@@ -128,6 +128,13 @@ const appStore = useAppStore()
 
 const config = computed(() => appStore.config)
 
+const hasContact = computed(() => {
+  return Boolean(
+    String(config.value?.contact?.telegram || '').trim()
+    || String(config.value?.contact?.whatsapp || '').trim(),
+  )
+})
+
 const brandSiteName = computed(() => {
   const siteName = config.value?.brand?.site_name
   return typeof siteName === 'string' && siteName.trim() ? siteName.trim() : '若木云卡'
@@ -148,7 +155,7 @@ const brandInitial = computed(() => {
 
 const brandLogo = computed(() => {
   const raw = String(config.value?.brand?.site_logo || '').trim()
-  return raw ? getImageUrl(raw) : ''
+  return getImageUrl(raw || '/brand/ruomu-logo.webp')
 })
 
 const isListMode = computed(() => config.value?.template_mode === 'list')

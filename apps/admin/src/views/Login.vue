@@ -184,6 +184,7 @@ onUnmounted(() => {
 <template>
   <div class="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
     <div class="w-full max-w-md">
+      <img src="/brand/ruomu-logo.webp" alt="若木云卡" class="mx-auto mb-6 h-16 max-w-[260px] object-contain" />
       <Card class="border-border shadow-sm">
         <CardHeader>
           <CardTitle class="text-2xl">

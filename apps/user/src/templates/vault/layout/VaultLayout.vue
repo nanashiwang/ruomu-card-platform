@@ -156,10 +156,10 @@ const moreEl = ref<HTMLElement | null>(null)
 
 const year = new Date().getFullYear()
 
-const brandName = computed(() => String(appStore.config?.brand?.site_name || '').trim() || 'D&J Studio')
+const brandName = computed(() => String(appStore.config?.brand?.site_name || '').trim() || '若木云卡')
 const brandLogo = computed(() => {
   const raw = String(appStore.config?.brand?.site_logo || '').trim()
-  return raw ? getImageUrl(raw) : ''
+  return getImageUrl(raw || '/brand/ruomu-logo.webp')
 })
 const brandDescription = computed(() => {
   const desc = appStore.config?.brand?.site_description
