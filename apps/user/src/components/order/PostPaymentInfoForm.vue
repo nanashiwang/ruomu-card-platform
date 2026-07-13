@@ -46,13 +46,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { userOrderAPI } from '../../api'
+import { guestOrderAPI, userOrderAPI } from '../../api'
 import { toast } from '../../composables/useToast'
 
 const props = defineProps<{
   item: any
   orderNo: string
   orderStatus: string
+  guestAuth?: { email: string; order_password: string }
 }>()
 
 const { t } = useI18n()
@@ -84,10 +85,14 @@ const submit = async () => {
   if (submitting.value || !props.item?.id) return
   submitting.value = true
   try {
-    const response = await userOrderAPI.submitPostPaymentInfo(props.orderNo, Number(props.item.id), {
-      account_email: accountEmail.value,
-      current_plan: currentPlan.value,
-    })
+    const payload = { account_email: accountEmail.value, current_plan: currentPlan.value }
+    const response = props.guestAuth
+      ? await guestOrderAPI.submitPostPaymentInfo(props.orderNo, Number(props.item.id), {
+          ...payload,
+          email: props.guestAuth.email,
+          order_password: props.guestAuth.order_password,
+        })
+      : await userOrderAPI.submitPostPaymentInfo(props.orderNo, Number(props.item.id), payload)
     const updated = findItem(response.data?.data)
     savedInfo.value = updated?.post_payment_info || {
       account_email: accountEmail.value,

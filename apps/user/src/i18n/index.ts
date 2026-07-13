@@ -1084,7 +1084,7 @@ const messages = {
             guestInstructions: {
                 title: '填写说明：',
                 email: '邮箱：请填写一个可接收邮件的邮箱，您在付款后我们可通过该邮箱向您发送商品信息并可通过该邮箱联系您',
-                password: '订单密码：请自行设置一个复杂密码并妥善保管，该密码用于您在购买之后，通过“游客查单”菜单，查询您所购买的商品',
+                password: '无需注册或设置密码：系统会自动生成本订单的安全查询凭证并保存在当前设备',
             },
             manualFormTitle: '交付信息填写',
             manualFormTip: '人工交付信息按商品收集：同一商品购买多个 SKU 时仅需填写一次。',
@@ -1121,7 +1121,7 @@ const messages = {
             submitting: '提交中...',
             errors: {
                 emptyCart: '购物车为空',
-                missingGuest: '请输入邮箱与订单密码',
+                missingGuest: '请输入联系邮箱',
                 loginOrGuest: '请先登录或使用游客购买',
                 submitFailed: '提交失败，请稍后重试',
                 manualFormInvalid: '请完善交付信息后再提交',
@@ -2837,7 +2837,7 @@ const messages = {
             guestInstructions: {
                 title: '填寫說明：',
                 email: '信箱：請填寫一個可接收郵件的信箱，您在付款後我們可通過該信箱向您發送商品資訊並可通過該信箱聯絡您',
-                password: '訂單密碼：請自行設置一個複雜密碼並妥善保管，該密碼用於您在購買之後，通過“遊客查單”菜單，查詢您所購買的商品',
+                password: '無需註冊或設定密碼：系統會自動產生本訂單的安全查詢憑證並儲存在目前裝置',
             },
             manualFormTitle: '交付資訊填寫',
             manualFormTip: '人工交付資訊按商品收集：同一商品購買多個 SKU 時僅需填寫一次。',
@@ -2874,7 +2874,7 @@ const messages = {
             submitting: '提交中...',
             errors: {
                 emptyCart: '購物車為空',
-                missingGuest: '請輸入信箱與訂單密碼',
+                missingGuest: '請輸入聯絡信箱',
                 loginOrGuest: '請先登入或使用遊客購買',
                 submitFailed: '提交失敗，請稍後重試',
                 manualFormInvalid: '請先完善交付資訊再提交',
@@ -4543,7 +4543,7 @@ const messages = {
             guestInstructions: {
                 title: 'Fill Instructions:',
                 email: 'Email: Please provide an email address that can receive emails. After payment, we could send product information and contact you through this email.',
-                password: 'Order Password: Please set a complex password and keep it safe. This password is used for you to query your purchased products through the "Guest Order Lookup" menu after purchase.',
+                password: 'No account or password setup is required. A secure order lookup credential is generated and saved on this device automatically.',
             },
             manualFormTitle: 'Required information',
             manualFormTip: 'Manual-delivery information is collected per product. If multiple SKUs of the same product are purchased, fill it once only.',
@@ -4580,7 +4580,7 @@ const messages = {
             submitting: 'Submitting...',
             errors: {
                 emptyCart: 'Your cart is empty',
-                missingGuest: 'Please enter email and order password',
+                missingGuest: 'Please enter a contact email',
                 loginOrGuest: 'Please login or use guest checkout',
                 submitFailed: 'Submit failed, please try again',
                 manualFormInvalid: 'Please complete required information before submitting',

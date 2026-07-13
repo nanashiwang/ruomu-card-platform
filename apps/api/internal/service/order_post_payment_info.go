@@ -22,6 +22,17 @@ type SubmitPostPaymentInfoInput struct {
 	CurrentPlan  string
 }
 
+// SubmitGuestPostPaymentInfoInput 是游客凭订单查询凭证补充资料的输入。
+type SubmitGuestPostPaymentInfoInput struct {
+	Tenant        TenantContext
+	OrderNo       string
+	GuestEmail    string
+	GuestPassword string
+	OrderItemID   uint
+	AccountEmail  string
+	CurrentPlan   string
+}
+
 var allowedPostPaymentPlans = map[string]struct{}{
 	"free":       {},
 	"go":         {},
@@ -55,11 +66,41 @@ func (s *OrderService) SubmitPostPaymentInfo(input SubmitPostPaymentInfoInput) (
 	if err != nil {
 		return nil, err
 	}
+	return s.savePostPaymentInfo(order, input.OrderItemID, email, plan, func() (*models.Order, error) {
+		return s.GetOrderByUserOrderNoForTenant(input.Tenant, input.OrderNo, input.UserID)
+	})
+}
+
+// SubmitGuestPostPaymentInfo 允许游客使用下单邮箱和订单查询凭证提交资料。
+func (s *OrderService) SubmitGuestPostPaymentInfo(input SubmitGuestPostPaymentInfoInput) (*models.Order, error) {
+	if input.OrderItemID == 0 || strings.TrimSpace(input.OrderNo) == "" || strings.TrimSpace(input.GuestEmail) == "" || strings.TrimSpace(input.GuestPassword) == "" {
+		return nil, ErrPostPaymentInfoInvalid
+	}
+	email := strings.ToLower(strings.TrimSpace(input.AccountEmail))
+	parsedEmail, err := mail.ParseAddress(email)
+	if err != nil || !strings.EqualFold(parsedEmail.Address, email) || len(email) > 254 {
+		return nil, ErrPostPaymentInfoInvalid
+	}
+	plan := strings.ToLower(strings.TrimSpace(input.CurrentPlan))
+	if _, ok := allowedPostPaymentPlans[plan]; !ok {
+		return nil, ErrPostPaymentInfoInvalid
+	}
+
+	order, err := s.GetOrderByGuestOrderNoForTenant(input.Tenant, input.OrderNo, input.GuestEmail, input.GuestPassword)
+	if err != nil {
+		return nil, err
+	}
+	return s.savePostPaymentInfo(order, input.OrderItemID, email, plan, func() (*models.Order, error) {
+		return s.GetOrderByGuestOrderNoForTenant(input.Tenant, input.OrderNo, input.GuestEmail, input.GuestPassword)
+	})
+}
+
+func (s *OrderService) savePostPaymentInfo(order *models.Order, orderItemID uint, email, plan string, reload func() (*models.Order, error)) (*models.Order, error) {
 
 	var target *models.OrderItem
 	targetStatus := order.Status
 	for i := range order.Items {
-		if order.Items[i].ID == input.OrderItemID {
+		if order.Items[i].ID == orderItemID {
 			target = &order.Items[i]
 			break
 		}
@@ -83,7 +124,7 @@ func (s *OrderService) SubmitPostPaymentInfo(input SubmitPostPaymentInfoInput) (
 	}
 
 	now := time.Now()
-	err = s.orderRepo.Transaction(func(tx *gorm.DB) error {
+	err := s.orderRepo.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&models.OrderItem{}).
 			Where("id = ? AND order_id = ? AND post_payment_info_required = ?", target.ID, target.OrderID, true).
 			Updates(map[string]interface{}{
@@ -107,5 +148,5 @@ func (s *OrderService) SubmitPostPaymentInfo(input SubmitPostPaymentInfoInput) (
 		return nil, ErrOrderUpdateFailed
 	}
 
-	return s.GetOrderByUserOrderNoForTenant(input.Tenant, input.OrderNo, input.UserID)
+	return reload()
 }

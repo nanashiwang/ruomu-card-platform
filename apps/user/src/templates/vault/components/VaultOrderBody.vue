@@ -88,7 +88,7 @@
       <div v-if="order.items && order.items.length > 0" class="grid">
         <div v-for="(item, idx) in order.items" :key="idx">
           <VaultOrderItem :item="item" :currency="order.currency" />
-          <PostPaymentInfoForm v-if="variant === 'user'" :item="item" :order-no="order.order_no" :order-status="order.status" />
+          <PostPaymentInfoForm :item="item" :order-no="order.order_no" :order-status="order.status" :guest-auth="variant === 'guest' ? guestAuth : undefined" />
         </div>
       </div>
       <div v-else class="text-[13px] text-muted-foreground">{{ t('orderDetail.noItems') }}</div>
@@ -111,7 +111,7 @@
           <div v-if="child.items && child.items.length" class="grid">
             <div v-for="(item, cidx) in child.items" :key="cidx">
               <VaultOrderItem :item="item" :currency="child.currency || order.currency" />
-              <PostPaymentInfoForm v-if="variant === 'user'" :item="item" :order-no="order.order_no" :order-status="resolvedChildStatus(child)" />
+              <PostPaymentInfoForm :item="item" :order-no="order.order_no" :order-status="resolvedChildStatus(child)" :guest-auth="variant === 'guest' ? guestAuth : undefined" />
             </div>
           </div>
           <div v-else class="text-[13px] text-muted-foreground">{{ t('orderDetail.noItems') }}</div>
@@ -159,6 +159,7 @@ const props = defineProps<{
   order: any
   variant: 'user' | 'guest'
   fulfillmentDownloading: boolean
+  guestAuth?: { email: string; order_password: string }
 }>()
 
 const emit = defineEmits<{

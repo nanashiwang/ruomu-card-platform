@@ -57,6 +57,7 @@
       <VaultOrderBody
         :order="order"
         variant="guest"
+        :guest-auth="auth"
         :fulfillment-downloading="fulfillmentDownloading"
         @download="handleDownloadFulfillment"
       />

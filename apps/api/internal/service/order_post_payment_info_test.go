@@ -88,3 +88,50 @@ func TestSubmitPostPaymentInfoRequiresPaidOwnedOrder(t *testing.T) {
 		t.Fatalf("another user must not update the order, got %v", err)
 	}
 }
+
+func TestSubmitGuestPostPaymentInfoRequiresGuestCredentials(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:guest_post_payment_info_%d?mode=memory&cache=shared", time.Now().UnixNano())), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Order{}, &models.OrderItem{}, &models.OrderRefundRecord{}, &models.Fulfillment{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+
+	now := time.Now()
+	order := &models.Order{
+		OrderNo: "GUEST-POST-INFO-001", GuestEmail: "guest@example.com", GuestPassword: "lookup-code",
+		Status: constants.OrderStatusPaid, Currency: "CNY",
+		OriginalAmount: models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		TotalAmount:    models.NewMoneyFromDecimal(decimal.NewFromInt(169)), CreatedAt: now, UpdatedAt: now,
+	}
+	item := models.OrderItem{
+		ProductID: 1, SKUID: 1, TitleJSON: models.JSON{"zh-CN": "GPT Plus"}, Quantity: 1,
+		UnitPrice: models.NewMoneyFromDecimal(decimal.NewFromInt(169)), TotalPrice: models.NewMoneyFromDecimal(decimal.NewFromInt(169)),
+		FulfillmentType: constants.FulfillmentTypeManual, PostPaymentInfoRequired: true, CreatedAt: now, UpdatedAt: now,
+	}
+	repo := repository.NewOrderRepository(db)
+	if err := repo.Create(order, []models.OrderItem{item}); err != nil {
+		t.Fatalf("create order failed: %v", err)
+	}
+	var savedItem models.OrderItem
+	if err := db.Where("order_id = ?", order.ID).First(&savedItem).Error; err != nil {
+		t.Fatalf("load item failed: %v", err)
+	}
+
+	svc := NewOrderService(OrderServiceOptions{OrderRepo: repo})
+	input := SubmitGuestPostPaymentInfoInput{
+		Tenant: MainTenantContext("main.example.test"), OrderNo: order.OrderNo,
+		GuestEmail: order.GuestEmail, GuestPassword: order.GuestPassword, OrderItemID: savedItem.ID,
+		AccountEmail: "account@example.com", CurrentPlan: "free",
+	}
+	if _, err := svc.SubmitGuestPostPaymentInfo(input); err != nil {
+		t.Fatalf("valid guest credentials should accept submission: %v", err)
+	}
+	input.GuestPassword = "wrong-code"
+	if _, err := svc.SubmitGuestPostPaymentInfo(input); err != ErrGuestOrderNotFound {
+		t.Fatalf("invalid guest credentials must be rejected, got %v", err)
+	}
+}

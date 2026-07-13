@@ -21,6 +21,8 @@ export const guestOrderAPI = {
     createAndPay: (data: any) => userApi.post('/guest/orders/create-and-pay', data),
     list: (params: any) => userApi.get('/guest/orders', { params }),
     detail: (orderNo: string, params: any, options?: any) => userApi.get(`/guest/orders/${encodeURIComponent(orderNo)}`, { params, ...(options || {}) }),
+    submitPostPaymentInfo: (orderNo: string, itemId: number, data: { email: string; order_password: string; account_email: string; current_plan: string }) =>
+        userApi.put(`/guest/orders/${encodeURIComponent(orderNo)}/items/${itemId}/post-payment-info`, data),
     downloadFulfillment: (orderNo: string, params: any) => userApi.get(`/guest/orders/${encodeURIComponent(orderNo)}/fulfillment/download`, { params, blob: true }),
     createPayment: (data: any) => userApi.post('/guest/payments', data),
     capturePayment: (id: number, data: any) => userApi.post(`/guest/payments/${id}/capture`, data),

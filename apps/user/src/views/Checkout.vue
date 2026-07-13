@@ -124,18 +124,12 @@
               </Button>
             </div>
 
-            <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4">
               <Input
                 v-model="guestEmail"
                 type="email"
                 class="h-11"
                 :placeholder="t('checkout.guestEmailPlaceholder')"
-              />
-              <Input
-                v-model="guestPassword"
-                type="password"
-                class="h-11"
-                :placeholder="t('checkout.guestPasswordPlaceholder')"
               />
             </div>
 
@@ -333,7 +327,7 @@ const {
   checkoutItemCurrency, checkoutItemPriceParts, checkoutItemOriginalPriceParts, checkoutItemHasPriceDiscount,
   manualFormProducts, manualFormData, submitAttempted, getManualFieldLabel, getManualFieldPlaceholder, manualFieldError,
   couponCode, isResellerTenant,
-  checkoutMode, guestEmail, guestPassword, guestEmailValid,
+  checkoutMode, guestEmail, guestEmailValid,
   guestCaptchaEnabled, captchaProvider, guestCaptchaPayload, guestTurnstileToken, guestTurnstileSiteKey,
   guestImageCaptchaRef, guestTurnstileRef, handleGuestCaptchaConfigStale,
   previewCurrency, previewOriginal, previewCoupon, previewPromotion, previewWholesale, previewMemberDiscount, previewTotal,

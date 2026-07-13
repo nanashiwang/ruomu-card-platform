@@ -82,9 +82,8 @@
           </div>
 
           <template v-if="checkoutMode === 'guest'">
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="grid gap-3">
               <Input v-model="guestEmail" type="email" class="h-11" :placeholder="t('checkout.guestEmailPlaceholder')" />
-              <Input v-model="guestPassword" type="password" class="h-11" :placeholder="t('checkout.guestPasswordPlaceholder')" />
             </div>
 
             <div v-if="guestCaptchaEnabled" class="mt-3.5">
@@ -218,7 +217,7 @@ const {
   checkoutItemCurrency, checkoutItemPriceParts, checkoutItemOriginalPriceParts, checkoutItemHasPriceDiscount,
   manualFormProducts, manualFormData, submitAttempted, getManualFieldLabel, getManualFieldPlaceholder, manualFieldError,
   couponCode, isResellerTenant,
-  checkoutMode, guestEmail, guestPassword, guestEmailValid,
+  checkoutMode, guestEmail, guestEmailValid,
   guestCaptchaEnabled, captchaProvider, guestCaptchaPayload, guestTurnstileToken, guestTurnstileSiteKey,
   guestImageCaptchaRef, guestTurnstileRef, handleGuestCaptchaConfigStale,
   previewCurrency, previewOriginal, previewCoupon, previewPromotion, previewWholesale, previewMemberDiscount, previewTotal,

@@ -110,6 +110,7 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 			guest.POST("/orders/preview", publicHandler.PreviewGuestOrder)
 			guest.GET("/orders", publicHandler.ListGuestOrders)
 			guest.GET("/orders/:order_no", publicHandler.GetGuestOrderByOrderNo)
+			guest.PUT("/orders/:order_no/items/:item_id/post-payment-info", publicHandler.SubmitGuestPostPaymentInfo)
 			guest.GET("/orders/:order_no/fulfillment/download", publicHandler.DownloadGuestFulfillment)
 			guest.POST("/payments", publicHandler.CreateGuestPayment)
 			guest.POST("/payments/:id/capture", publicHandler.CaptureGuestPayment)

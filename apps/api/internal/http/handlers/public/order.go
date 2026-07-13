@@ -38,6 +38,13 @@ type submitPostPaymentInfoRequest struct {
 	CurrentPlan  string `json:"current_plan" binding:"required"`
 }
 
+type submitGuestPostPaymentInfoRequest struct {
+	Email         string `json:"email" binding:"required"`
+	OrderPassword string `json:"order_password" binding:"required"`
+	AccountEmail  string `json:"account_email" binding:"required"`
+	CurrentPlan   string `json:"current_plan" binding:"required"`
+}
+
 // SubmitPostPaymentInfo 保存已付款订单的账号邮箱和当前套餐。
 func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 	uid, ok := shared.GetUserID(c)
@@ -67,6 +74,46 @@ func (h *Handler) SubmitPostPaymentInfo(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrOrderNotFound):
 			shared.RespondError(c, response.CodeNotFound, "error.order_not_found", nil)
+		case errors.Is(err, service.ErrOrderStatusInvalid):
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
+		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
+			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请填写有效的账号邮箱和当前套餐", nil)
+		case errors.Is(err, service.ErrPostPaymentInfoNotRequired):
+			shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		default:
+			shared.RespondError(c, response.CodeInternal, "error.order_update_failed", err)
+		}
+		return
+	}
+	response.Success(c, dto.NewOrderDetailTruncated(order))
+}
+
+// SubmitGuestPostPaymentInfo 保存游客已付款订单的账号邮箱和当前套餐。
+func (h *Handler) SubmitGuestPostPaymentInfo(c *gin.Context) {
+	itemID, err := strconv.ParseUint(strings.TrimSpace(c.Param("item_id")), 10, 64)
+	if err != nil || itemID == 0 {
+		shared.RespondError(c, response.CodeBadRequest, "error.order_item_invalid", nil)
+		return
+	}
+	var req submitGuestPostPaymentInfoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		shared.RespondBindError(c, err)
+		return
+	}
+
+	order, err := h.OrderService.SubmitGuestPostPaymentInfo(service.SubmitGuestPostPaymentInfoInput{
+		Tenant:        tenantFromRequest(c),
+		OrderNo:       c.Param("order_no"),
+		GuestEmail:    req.Email,
+		GuestPassword: req.OrderPassword,
+		OrderItemID:   uint(itemID),
+		AccountEmail:  req.AccountEmail,
+		CurrentPlan:   req.CurrentPlan,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrGuestOrderNotFound):
+			shared.RespondError(c, response.CodeNotFound, "error.guest_order_not_found", nil)
 		case errors.Is(err, service.ErrOrderStatusInvalid):
 			shared.RespondErrorWithMsg(c, response.CodeBadRequest, "请在订单付款成功后提交资料", nil)
 		case errors.Is(err, service.ErrPostPaymentInfoInvalid):
