@@ -3,6 +3,10 @@
     <!-- 站长配置的横幅轮播（两种模式共用，顶部展示） -->
     <VaultBannerHero />
 
+    <div class="mx-auto w-full max-w-[1180px] px-4 pt-6 sm:px-6">
+      <BusinessHoursNotice />
+    </div>
+
     <!-- ==================== 列表模式 ==================== -->
     <template v-if="isListMode">
       <section class="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6">
@@ -184,6 +188,7 @@ import VaultCategorySidebar from './components/VaultCategorySidebar.vue'
 import VaultBannerHero from './components/VaultBannerHero.vue'
 import ProductQuickBuy from '../../components/ProductQuickBuy.vue'
 import AnnouncementModal from '../../components/AnnouncementModal.vue'
+import BusinessHoursNotice from '../../components/BusinessHoursNotice.vue'
 import { useAnnouncement, type HomeAnnouncement } from '../../composables/useAnnouncement'
 
 const route = useRoute()

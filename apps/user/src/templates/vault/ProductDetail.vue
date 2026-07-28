@@ -165,6 +165,8 @@
             </div>
           </div>
 
+          <GptSubscriptionNotice v-if="showGptSubscriptionNotice" />
+
           <!-- 提示 -->
           <div v-if="cannotPurchaseReason" class="my-3.5 rounded-sm bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive">{{ cannotPurchaseReason }}</div>
           <div v-if="purchaseWarning" class="my-3.5 rounded-sm bg-warning/10 px-3.5 py-2.5 text-sm font-semibold text-warning">{{ purchaseWarning }}</div>
@@ -255,6 +257,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { processHtmlForDisplay } from '../../utils/content'
 import { useProductDetail } from '../../composables/useProductDetail'
+import GptSubscriptionNotice from '../../components/product/GptSubscriptionNotice.vue'
 import VaultProductMobileBar from './components/VaultProductMobileBar.vue'
 
 const { t } = useI18n()
@@ -294,7 +297,7 @@ const {
   isSkuPurchasable, skuDisplayText, skuStockText,
   quantityEffectiveLimit, quantityEffectiveMin, handleQuantityInput,
   requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
-  categoryName, images,
+  categoryName, images, showGptSubscriptionNotice,
   addToCart, buyNow, goLogin, loadProduct,
   mobileBarShowMemberPrice, mobileBarMemberPriceDisplay,
   mobileBarShowSkuPromotionPrice, mobileBarSkuPromotionPriceDisplay,
