@@ -43,11 +43,11 @@
         />
 
         <!-- Main Info Card -->
-        <div
-          class="bg-card backdrop-blur-xl border rounded-3xl overflow-hidden mb-8 shadow-2xl">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+        <div class="mb-8">
+          <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-8">
             <!-- Product Images (Left) -->
             <ProductImageGallery
+              class="overflow-hidden rounded-3xl border shadow-xl lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24"
               :images="images"
               :current-image="currentImage"
               :product-title="getLocalizedText(product.title)"
@@ -55,7 +55,7 @@
             />
 
             <!-- Product Info (Right) -->
-            <div class="p-6 md:p-8 lg:p-12 flex flex-col justify-center">
+            <div class="flex flex-col rounded-3xl border bg-card p-6 shadow-xl md:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:p-10">
               <div class="mb-6">
                 <div v-if="categoryName" class="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
                   {{ t('productDetail.categoryLabel') }} · {{ categoryName }}
@@ -254,7 +254,6 @@
                   </p>
                 </div>
 
-                <GptSubscriptionNotice v-if="showGptSubscriptionNotice" />
               </div>
 
               <!-- Quantity Selector -->
@@ -315,8 +314,16 @@
 
               </div>
             </div>
+
+            <GptSubscriptionNotice
+              v-if="showGptSubscriptionNotice"
+              class="lg:col-start-1 lg:row-start-2 lg:my-0"
+              mode="summary"
+            />
           </div>
         </div>
+
+        <GptSubscriptionNotice v-if="showGptSubscriptionNotice" mode="full" />
 
         <!-- Details Content Card -->
         <div v-if="product.content"

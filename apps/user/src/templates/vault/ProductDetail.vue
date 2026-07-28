@@ -20,11 +20,11 @@
         <span class="text-foreground">{{ getLocalizedText(product.title) }}</span>
       </nav>
 
-      <section class="grid gap-11 py-2.5 lg:grid-cols-2">
+      <section class="grid items-start gap-8 py-2.5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-11">
         <!-- 图区 -->
-        <div>
-          <div class="relative grid h-[380px] place-items-center overflow-hidden rounded-xl" :class="images.length ? '' : 'bg-[linear-gradient(135deg,#7b74f2,var(--red))]'">
-            <img v-if="currentImage" :src="currentImage" :alt="getLocalizedText(product.title)" class="absolute inset-0 h-full w-full object-cover" />
+        <div class="lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24">
+          <div class="relative grid h-[320px] place-items-center overflow-hidden rounded-xl bg-secondary md:h-[380px]" :class="images.length ? '' : 'bg-[linear-gradient(135deg,#7b74f2,var(--red))]'">
+            <img v-if="currentImage" :src="currentImage" :alt="getLocalizedText(product.title)" class="absolute inset-0 h-full w-full object-contain" />
             <Package v-else class="h-[110px] w-[110px] text-white/95" />
           </div>
           <div v-if="images.length > 1" class="mt-3.5 flex flex-wrap gap-3">
@@ -41,7 +41,7 @@
         </div>
 
         <!-- 购买区 -->
-        <div>
+        <div class="lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <span v-if="categoryName" class="block truncate text-[13px] font-semibold text-muted-foreground">{{ categoryName }}</span>
           <h1 class="my-2 mb-3 text-[32px] font-extrabold">{{ getLocalizedText(product.title) }}</h1>
 
@@ -165,8 +165,6 @@
             </div>
           </div>
 
-          <GptSubscriptionNotice v-if="showGptSubscriptionNotice" />
-
           <!-- 提示 -->
           <div v-if="cannotPurchaseReason" class="my-3.5 rounded-sm bg-destructive/10 px-3.5 py-2.5 text-sm font-semibold text-destructive">{{ cannotPurchaseReason }}</div>
           <div v-if="purchaseWarning" class="my-3.5 rounded-sm bg-warning/10 px-3.5 py-2.5 text-sm font-semibold text-warning">{{ purchaseWarning }}</div>
@@ -185,9 +183,17 @@
             <span class="text-sm font-semibold">{{ t('productDetail.deliveryReassurance') }}</span>
           </div>
         </div>
+
+        <GptSubscriptionNotice
+          v-if="showGptSubscriptionNotice"
+          class="lg:col-start-1 lg:row-start-2 lg:my-0"
+          mode="summary"
+        />
       </section>
 
       <!-- 描述 / 详情 -->
+      <GptSubscriptionNotice v-if="showGptSubscriptionNotice" mode="full" />
+
       <section v-if="getLocalizedText(product.description) || product.content" class="py-9">
         <div class="mb-[22px] mt-3 flex gap-[26px] border-b-2">
           <span class="-mb-0.5 border-b-[3px] border-primary py-3.5 text-base font-bold text-foreground">{{ t('productDetail.details') }}</span>
