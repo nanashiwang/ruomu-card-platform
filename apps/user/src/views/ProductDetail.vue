@@ -253,6 +253,8 @@
                     {{ getLocalizedText(product.description) }}
                   </p>
                 </div>
+
+                <GptSubscriptionNotice v-if="showGptSubscriptionNotice" />
               </div>
 
               <!-- Quantity Selector -->
@@ -419,6 +421,7 @@ import { processHtmlForDisplay } from '../utils/content'
 import { useProductDetail } from '../composables/useProductDetail'
 import ProductImageGallery from '../components/product/ProductImageGallery.vue'
 import ProductMobileBar from '../components/product/ProductMobileBar.vue'
+import GptSubscriptionNotice from '../components/product/GptSubscriptionNotice.vue'
 import BreadcrumbNav from '../components/BreadcrumbNav.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -465,7 +468,7 @@ const {
   isSkuPurchasable, skuDisplayText, skuStockText, skuStockBadgeClass,
   quantityEffectiveLimit, quantityEffectiveMin, handleQuantityInput,
   requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
-  categoryName, images,
+  categoryName, images, showGptSubscriptionNotice,
   addToCart, buyNow, goLogin, loadProduct,
   mobileBarShowMemberPrice, mobileBarMemberPriceDisplay,
   mobileBarShowSkuPromotionPrice, mobileBarSkuPromotionPriceDisplay,

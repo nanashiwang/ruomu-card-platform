@@ -12,6 +12,7 @@ import { useUserProfileStore } from '../stores/userProfile'
 import { debounceAsync } from '../utils/debounce'
 import { buildSkuDisplayText, normalizeSkuId } from '../utils/sku'
 import { resolveSkuAvailableStock, resolveSkuStockDisplay, type PublicStockDisplay } from '../utils/publicStock'
+import { isGptSubscriptionProduct } from '../utils/gptSubscription'
 import { useLocalized, useProductLabels } from './useProduct'
 import { toast } from './useToast'
 
@@ -329,6 +330,11 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     const category = product.value?.category?.name
     return category ? getLocalizedText(category) : ''
   })
+  const showGptSubscriptionNotice = computed(() => isGptSubscriptionProduct(
+    getLocalizedText(product.value?.title),
+    product.value?.slug,
+    categoryName.value,
+  ))
 
   const images = computed(() => {
     if (!product.value?.images) return []
@@ -688,7 +694,7 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     quantityEffectiveLimit, quantityEffectiveMin, handleQuantityInput,
     // 购买能力
     purchaseType, requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
-    categoryName, images,
+    categoryName, images, showGptSubscriptionNotice,
     // 动作
     addToCart, buyNow, goLogin, loadProduct,
     // 移动端购买条

@@ -59,6 +59,7 @@
       <!-- Main: Left Categories + Right Product List -->
       <section class="relative z-10 pb-6" :class="showHeroSection ? 'pt-6' : 'pt-24'">
         <div class="container mx-auto px-4">
+          <BusinessHoursNotice class="mb-6" />
           <div class="flex flex-col lg:flex-row gap-6">
 
             <CategorySidebar
@@ -262,6 +263,7 @@
 
     <section id="featured" class="relative z-10 pb-14" :class="showHeroSection ? 'pt-14' : 'pt-32 md:pt-36'">
       <div class="container mx-auto px-4">
+        <BusinessHoursNotice class="mb-8" />
         <div class="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 class="theme-section-heading text-3xl md:text-4xl">{{ t('home.featured.title') }}</h2>
@@ -367,6 +369,7 @@ import CategorySidebar from '../components/CategorySidebar.vue'
 import PaginationNav from '../components/PaginationNav.vue'
 import EmptyState from '../components/EmptyState.vue'
 import AnnouncementModal from '../components/AnnouncementModal.vue'
+import BusinessHoursNotice from '../components/BusinessHoursNotice.vue'
 import { useAnnouncement, type HomeAnnouncement } from '../composables/useAnnouncement'
 
 const router = useRouter()
