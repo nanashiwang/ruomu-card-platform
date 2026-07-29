@@ -93,6 +93,7 @@
             :get-manual-field-label="getManualFieldLabel"
             :get-manual-field-placeholder="getManualFieldPlaceholder"
             :manual-field-error="manualFieldError"
+            :autofill-email="manualFormAutofillEmail"
           />
 
           <div v-if="!isResellerTenant" class="rounded-2xl border bg-card text-card-foreground p-6">
@@ -124,13 +125,20 @@
               </Button>
             </div>
 
-            <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4">
+            <div
+              v-if="checkoutMode === 'guest'"
+              class="grid grid-cols-1 gap-4"
+              :data-checkout-field-error="submitAttempted && !guestEmailValid ? 'true' : undefined"
+            >
               <Input
                 v-model="guestEmail"
                 type="email"
-                class="h-11"
+                class="h-11 border-destructive ring-1 ring-destructive/30 focus-visible:ring-destructive"
                 :placeholder="t('checkout.guestEmailPlaceholder')"
               />
+              <p v-if="submitAttempted && !guestEmail.trim()" class="text-xs font-semibold text-destructive">
+                {{ t('checkout.guestEmailRequired') }}
+              </p>
             </div>
 
             <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
@@ -293,7 +301,7 @@
           <Button
             size="lg"
             class="w-full font-semibold"
-            :disabled="!canSubmit"
+            :disabled="!canAttemptSubmit"
             @click="handleSubmit"
           >
             {{ submitting ? t('checkout.submitting') : t('checkout.submitButton') }}
@@ -325,7 +333,7 @@ const {
   isBuyNowMode, cartItems, totalItems, cartItemKey, checkoutItemImage, itemSkuDisplay,
   itemStockExceeded, itemStockHint,
   checkoutItemCurrency, checkoutItemPriceParts, checkoutItemOriginalPriceParts, checkoutItemHasPriceDiscount,
-  manualFormProducts, manualFormData, submitAttempted, getManualFieldLabel, getManualFieldPlaceholder, manualFieldError,
+  manualFormProducts, manualFormData, submitAttempted, getManualFieldLabel, getManualFieldPlaceholder, manualFieldError, manualFormAutofillEmail,
   couponCode, isResellerTenant,
   checkoutMode, guestEmail, guestEmailValid,
   guestCaptchaEnabled, captchaProvider, guestCaptchaPayload, guestTurnstileToken, guestTurnstileSiteKey,
@@ -336,7 +344,7 @@ const {
   expectedWalletPaidDisplay, expectedOnlinePayDisplay, expectedOnlinePayCents,
   requiresOnlineChannel, paymentChannels, selectedChannelId, isChannelDisabledForAmount, channelAmountLimitHint,
   handleSelectChannel, formatChannelFeeRate, formatChannelFixedFee,
-  submitting, canSubmit, handleSubmit,
+  submitting, canAttemptSubmit, handleSubmit,
 } = useCheckout()
 
 // 这两个引用仅通过模板字符串 ref 绑定（刷新/重置逻辑在 composable 内），

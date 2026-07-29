@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore, type CartItem } from '../stores/cart'
@@ -553,6 +553,12 @@ export function useCheckout() {
     if (!isGuestCheckout.value) return true
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.value.trim())
   })
+  const manualFormAutofillEmail = computed(() => {
+    if (userAuthStore.isAuthenticated) {
+      return String(userAuthStore.user?.email || '').trim()
+    }
+    return guestEmail.value.trim()
+  })
 
   const captchaConfig = computed(() => appStore.config?.captcha || null)
   const captchaProvider = computed(() => String(captchaConfig.value?.provider || 'none'))
@@ -605,6 +611,11 @@ export function useCheckout() {
       return Boolean(guestTurnstileToken.value)
     }
     return false
+  })
+
+  const canAttemptSubmit = computed(() => {
+    if (syncingStock.value || submitting.value) return false
+    return cartItems.value.length > 0
   })
 
   const submitBlockedReason = computed(() => {
@@ -811,6 +822,12 @@ export function useCheckout() {
     previewError.value = ''
     if (!canSubmit.value) {
       error.value = submitBlockedReason.value || t('checkout.errors.submitFailed')
+      await nextTick()
+      const firstInvalidField = document.querySelector<HTMLElement>('[data-checkout-field-error="true"], [data-manual-field-error="true"]')
+      if (firstInvalidField) {
+        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        firstInvalidField.querySelector<HTMLElement>('input, textarea, select, button')?.focus()
+      }
       return
     }
 
@@ -1135,6 +1152,7 @@ export function useCheckout() {
     getManualFieldLabel,
     getManualFieldPlaceholder,
     manualFieldError,
+    manualFormAutofillEmail,
     // coupon
     couponCode,
     isResellerTenant,
@@ -1186,6 +1204,7 @@ export function useCheckout() {
     // submit
     submitting,
     canSubmit,
+    canAttemptSubmit,
     handleSubmit,
   }
 }
