@@ -1,0 +1,10 @@
+.git
+.env*
+config.yml
+db/
+uploads/
+logs/
+*.db
+*.log
+*.key
+*.pem

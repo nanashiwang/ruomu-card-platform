@@ -75,21 +75,21 @@ Docker 开发环境会启用 Redis 与 worker，更接近完整运行形态。
 RUN_TESTS=0 ./scripts/build.sh
 ```
 
-### 生产部署草案
+### HTTPS 生产部署与支付宝
+
+生产 Compose 使用统一 Nginx TLS 网关，按域名分离用户站、管理站与 API，仅对外暴露 80/443。
 
 ```bash
 cp .env.example .env
-# 修改 .env 中的 APP_SECRET_KEY、JWT_SECRET、USER_JWT_SECRET、DEFAULT_ADMIN_PASSWORD 等生产配置
+chmod 600 .env
+# 填写真实域名、证书目录、独立随机密钥和初始管理员密码
+./scripts/deploy.sh --check
 ./scripts/deploy.sh
 ```
 
-当前生产 compose 是基础草案，默认暴露：
+支付宝异步通知使用 `https://<API_DOMAIN>/api/v1/payments/callback`，同步返回使用 `https://<USER_DOMAIN>/pay`。`.env` 中的 URL 只用于部署校验，需同步填写管理后台支付渠道。部署脚本会先检查配置与 TLS，再构建启动并验证公网回调可达。
 
-- `USER_PORT`：用户前台；
-- `ADMIN_PORT`：管理后台；
-- `API_PORT`：API 服务。
-
-正式上线前建议接入外层 HTTPS 网关，并按域名拆分用户前台和管理后台。
+证书准备、环境变量、旧配置迁移、回调路径和 Docker 验证见 [生产部署与支付宝](docs/07-生产部署与支付宝.md)。不提交任何真实密钥或证书。
 
 ## 阶段目标
 

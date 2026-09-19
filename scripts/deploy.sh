@@ -2,18 +2,25 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE_FILE="${COMPOSE_FILE:-deploy/docker-compose.prod.yml}"
-
 cd "$ROOT_DIR"
+export ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
+export COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/deploy/docker-compose.prod.yml}"
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "缺少 docker 命令" >&2
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "缺少 python3 命令（部署检查使用 Python 3.9+ 标准库）" >&2
+  exit 1
+fi
+if [[ "${1:-}" != "" && "${1:-}" != "--check" ]]; then
+  echo "用法：./scripts/deploy.sh [--check]" >&2
   exit 1
 fi
 
-if [ ! -f ".env" ]; then
-  echo "未发现 .env。生产部署前请先执行：cp .env.example .env，并修改密钥、域名和端口。" >&2
-  exit 1
+python3 scripts/check-deployment.py
+if [[ "${1:-}" == "--check" ]]; then
+  exit 0
 fi
 
-docker compose --env-file .env -f "$COMPOSE_FILE" up -d --build
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --wait --wait-timeout 180
+# 公网 DNS / 可信 TLS / 回调路径一并检查；失败不声称部署成功，也不删除已有数据。
+python3 scripts/check-deployment.py --online
+echo "生产部署与 HTTPS 路由验证完成。请在管理后台核对渠道并完成真实支付验收。"
