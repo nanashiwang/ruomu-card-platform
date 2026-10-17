@@ -167,4 +167,60 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('COMPOSE_PROJECT_NAME', env)
             self.assertNotIn('APP_SECRET_KEY', env)
 
+class ManagedReleaseTests(unittest.TestCase):
+    def test_existing_release_requires_current_image_identity(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder).resolve() / 'current.json'
+            state.write_text(json.dumps({'revision': REV, 'components': {n: {'runtime_id': 'sha256:'+'c'*64} for n in r.COMPONENTS}}))
+            owned = {n: container(n,n) for n in r.COMPONENTS}
+            for item in owned.values(): item['Config']['Image'] = 'sha256:'+'c'*64
+            with patch.object(r,'STATE',state), patch.object(r,'inventory',return_value=(owned,{})), patch.object(r,'source_fingerprint',side_effect=AssertionError('managed release uses record')):
+                r.adoption_check(manifest())
+                owned['api']['Config']['Image'] = 'unexpected:latest'
+                with self.assertRaises(r.ReleaseError): r.adoption_check(manifest())
+
+    def test_recovery_handles_partially_created_components(self):
+        api = container('api','new-api')
+        unrelated = container('api','other-api',project='gewu')
+        with patch.object(r,'containers',return_value=[api,unrelated]), patch.object(r,'run') as call:
+            r.stop_api_for_recovery()
+            call.assert_called_once_with('docker','stop','--time','45','new-api',timeout=90)
+        with patch.object(r,'containers',return_value=[unrelated]), patch.object(r,'run') as call:
+            r.stop_api_for_recovery()
+            call.assert_not_called()
+
+    def test_source_fingerprint_detects_code_without_persisting_content(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder).resolve()
+            path=root/'apps/api/main.go'
+            path.parent.mkdir(parents=True)
+            path.write_text('original')
+            with patch.object(r,'source_files',return_value=['apps/api/main.go']):
+                first=r.source_fingerprint(root,'api')
+                path.write_text('changed')
+                self.assertNotEqual(r.source_fingerprint(root,'api'),first)
+                path.unlink()
+                with self.assertRaises(r.ReleaseError): r.source_fingerprint(root,'api')
+
+    def test_registry_acquire_accepts_cross_store_id_but_checks_digest_and_labels(self):
+        for bad_digest in (False,True):
+            with self.subTest(bad_digest=bad_digest), tempfile.TemporaryDirectory() as folder:
+                root=Path(folder).resolve()
+                directory=root/REV
+                directory.mkdir()
+                data=manifest()
+                (directory/'release.json').write_text(json.dumps(data))
+                def command(*args,**kwargs):
+                    name=next(n for n in r.COMPONENTS if args[-1]==data['components'][n]['image'])
+                    info={'Id':'sha256:'+'f'*64,'RepoDigests':[] if bad_digest else [args[-1]],
+                          'Architecture':'amd64','Os':'linux','Config':{'Labels':{
+                          'org.opencontainers.image.revision':REV,'org.opencontainers.image.source':'https://github.com/'+r.REPO,'org.ruomu.component':name}}}
+                    return subprocess.CompletedProcess(args,0,json.dumps([info]),'')
+                with patch.object(r,'STORE',root),patch.object(r,'run',side_effect=command),patch.object(r,'download',side_effect=AssertionError('unexpected download')):
+                    if bad_digest:
+                        with self.assertRaises(r.ReleaseError): r.acquire(REV)
+                    else:
+                        result=r.acquire(REV)
+                        self.assertTrue(all(x['runtime_id']=='sha256:'+'f'*64 for x in result['components'].values()))
+
 if __name__ == '__main__': unittest.main()

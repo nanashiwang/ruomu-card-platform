@@ -325,6 +325,16 @@ def database_probe(image, database, original_env, folder):
     print('PASS: isolated startup leaves database schema and rows unchanged', flush=True)
 
 def adoption_check(data):
+    if STATE.exists():
+        safe_path(STATE)
+        current = json.loads(STATE.read_text())
+        need(re.fullmatch(SHA, current.get('revision', '')), 'Invalid installed release record')
+        owned, _ = inventory()
+        for component, item in owned.items():
+            need(item['Config']['Image'] == current['components'][component]['runtime_id'],
+                 'Running images differ from the managed release record')
+        print('PASS: running images match managed release record', flush=True)
+        return
     for component, image in data['components'].items():
         need(source_fingerprint(ROOT, component) == image['source_sha256'],
              f'{component}: server source differs from release; do not bundle business changes into migration')
