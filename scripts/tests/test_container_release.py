@@ -168,6 +168,12 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('APP_SECRET_KEY', env)
 
 class ManagedReleaseTests(unittest.TestCase):
+    def test_docker_operations_cannot_follow_remote_operator_context(self):
+        with patch.dict(os.environ, {'DOCKER_CONTEXT':'other-server','DOCKER_HOST':'tcp://elsewhere:2375'}), patch.object(r.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'','')) as call:
+            r.run('docker','info')
+            self.assertEqual(call.call_args.kwargs['env']['DOCKER_CONTEXT'],'default')
+            self.assertEqual(call.call_args.kwargs['env']['DOCKER_HOST'],'unix:///var/run/docker.sock')
+
     def test_forced_or_incomplete_api_shutdown_blocks_cutover(self):
         for state in ({'Running': True, 'ExitCode': 0}, {'Running': False, 'ExitCode': 137}):
             with patch.object(r,'run',side_effect=[subprocess.CompletedProcess([],0,'',''),subprocess.CompletedProcess([],0,json.dumps([{'State':state}]),'')]):

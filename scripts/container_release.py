@@ -44,6 +44,11 @@ def need(ok, message):
         raise ReleaseError(message)
 
 def run(*args, timeout=60, check=True, env=None):
+    if args[0] == 'docker':
+        # Never let an operator's remote Docker context redirect this host's
+        # database paths or service operations to another machine.
+        env = {**(os.environ if env is None else env), 'DOCKER_CONTEXT': 'default',
+               'DOCKER_HOST': 'unix:///var/run/docker.sock'}
     try:
         result = subprocess.run(args, text=True, capture_output=True, timeout=timeout, env=env)
     except (subprocess.TimeoutExpired, OSError):
