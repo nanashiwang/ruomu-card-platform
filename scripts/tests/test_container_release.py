@@ -168,6 +168,16 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('APP_SECRET_KEY', env)
 
 class ManagedReleaseTests(unittest.TestCase):
+    def test_compose_serialized_dollars_are_decoded_exactly_once(self):
+        model = {'services': {'api': {'environment': {'KEY': 'a$VALUE$$end'}}}}
+        encoded = json.dumps(model).replace('$', '$$')
+        decoded = r.decoded_compose_config(encoded)
+        self.assertEqual(decoded, model)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder).resolve() / 'compose.json'
+            r.config_file(path, decoded)
+            self.assertEqual(json.loads(path.read_text()), json.loads(encoded))
+
     def test_existing_release_requires_current_image_identity(self):
         with tempfile.TemporaryDirectory() as folder:
             state = Path(folder).resolve() / 'current.json'

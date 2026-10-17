@@ -189,6 +189,13 @@ def compose(path, *args):
     return run('docker', 'compose', '--project-name', PROJECT, '--project-directory', str(ROOT),
                '--env-file', '/dev/null', '-f', str(path), *args, timeout=240, env=clean_env())
 
+def decoded_compose_config(output):
+    # Compose config doubles every dollar in its serialized output so the file
+    # can be fed back to Compose. Decode exactly that layer before manipulating
+    # the model; config_file adds it once when saving executable Compose JSON.
+    return json.loads(output.replace('$$', '$'))
+
+
 def read_config(owned):
     files = {x['Config']['Labels'].get('com.docker.compose.project.config_files', '') for x in owned.values()}
     need(len(files) == 1, 'Components use different Compose config files')
@@ -202,12 +209,16 @@ def read_config(owned):
         safe_path(envfile)
     command = ['docker', 'compose', '--project-name', PROJECT, '--project-directory', str(ROOT),
                '--env-file', str(envfile), '-f', str(config_path)]
-    config = json.loads(run(*command, 'config', '--format', 'json', env=clean_env()).stdout)
+    config = decoded_compose_config(run(*command, 'config', '--format', 'json', env=clean_env()).stdout)
     hashes = dict(line.split() for line in run(*command, 'config', '--hash', '*', env=clean_env()).stdout.splitlines())
     for service, item in owned.items():
         need(hashes.get(service) == item['Config']['Labels'].get('com.docker.compose.config-hash'),
              f'{service}: running container differs from saved Compose config; reconcile before migration')
     need(config.get('name') == PROJECT, 'Compose project mismatch')
+    for name, item in owned.items():
+        live = dict(value.split('=', 1) for value in item['Config'].get('Env', []) if '=' in value)
+        need(all(live.get(key) == value for key, value in config['services'][name].get('environment', {}).items() if value is not None),
+             f'{name}: resolved environment differs from running container; refusing configuration rewrite')
     return config
 
 def pinned_config(config, images):

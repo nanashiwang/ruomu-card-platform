@@ -29,7 +29,7 @@ def main():
     command = ['docker', 'compose', '--project-name', project, '--project-directory', str(ROOT),
                '--env-file', str(temp / '.env'), '-f', str(ROOT / 'deploy/docker-compose.prod.yml'),
                '-f', str(temp / 'images.json')]
-    config = json.loads(r.run(*command, 'config', '--format', 'json', env=r.clean_env()).stdout)
+    config = r.decoded_compose_config(r.run(*command, 'config', '--format', 'json', env=r.clean_env()).stdout)
     data = {'revision': revision, 'platform': 'linux/amd64', 'components': {}}
     for name in r.COMPONENTS:
         identity = json.loads(r.run('docker', 'image', 'inspect', f'{r.REGISTRY}{name}:{revision}').stdout)[0]['Id']
