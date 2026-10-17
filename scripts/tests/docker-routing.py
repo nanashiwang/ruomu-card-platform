@@ -121,6 +121,8 @@ def main():
                 test = ROOT / 'scripts/tests/container_migration.py'
                 subprocess.run(['sudo', '--preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT', 'python3', str(test),
                                 os.environ['COMPOSE_PROJECT_NAME'], str(tmp), args.revision], check=True)
+                deployment.probe_routes(edge, '127.0.0.1', https_port, ca_bundle)
+                print('PASS: external fixture TLS/routes still work after migration and rollback', flush=True)
         finally:
             # Only the unique test project is removed, including its disposable database.
             subprocess.run(command + ["down", "--volumes", "--remove-orphans", "--rmi", "local"], cwd=ROOT, check=True)

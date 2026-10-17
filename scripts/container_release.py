@@ -221,6 +221,23 @@ def read_config(owned):
              f'{name}: resolved environment differs from running container; refusing configuration rewrite')
     return config
 
+def current_images(owned):
+    images = {}
+    for name, container in owned.items():
+        candidates = [container['Image'], (container.get('ImageManifestDescriptor') or {}).get('digest', '')]
+        for candidate in candidates:
+            if not re.fullmatch(DIGEST, candidate):
+                continue
+            result = run('docker', 'image', 'inspect', candidate, check=False)
+            if result.returncode == 0:
+                identity = json.loads(result.stdout)[0]['Id']
+                need(re.fullmatch(DIGEST, identity), 'Invalid previous image identity')
+                images[name] = identity
+                break
+        need(name in images, f'{name}: previous content-addressed image unavailable; refusing migration without rollback')
+    return images
+
+
 def pinned_config(config, images):
     result = json.loads(json.dumps(config))
     for name, identity in images.items():
@@ -366,6 +383,7 @@ def preflight():
     owned, others = inventory()
     config = read_config(owned)
     health(owned)
+    current_images(owned)
     database, env = db_location(owned['api'])
     # Non-target services and volume/network identity must survive unchanged.
     for name in COMPONENTS:
@@ -377,6 +395,13 @@ def preflight():
             need(not any(m.get('Source') == db_mount['Source'] for m in item.get('Mounts', [])), 'Another container can access the card database')
     print('PASS: existing project, config hashes, health and database layout; no secret values shown', flush=True)
     return owned, others, config, database, env
+
+def stop_api(identity):
+    run('docker', 'stop', '--time', '45', identity, timeout=90)
+    item = json.loads(run('docker', 'inspect', identity).stdout)[0]
+    need(not item['State']['Running'] and item['State']['ExitCode'] == 0,
+         'API did not exit gracefully; refusing database cutover')
+
 
 def stop_api_for_recovery():
     # compose can fail after replacing only one of the three components.
@@ -414,7 +439,8 @@ def deploy(revision):
     adoption_check(data)
     folder = BACKUPS / (time.strftime('%Y%m%dT%H%M%SZ', time.gmtime()) + '-' + secrets.token_hex(3))
     folder.mkdir(mode=0o700)
-    previous = pinned_config(config, {name: item['Image'] for name, item in owned.items()})
+    old_images = current_images(owned)
+    previous = pinned_config(config, old_images)
     next_config = pinned_config(config, {name: item['runtime_id'] for name, item in data['components'].items()})
     old_path, new_path = folder / 'previous.json', STORE / revision / 'compose.json'
     config_file(old_path, previous)
@@ -430,9 +456,7 @@ def deploy(revision):
     try:
         print('STEP: brief card maintenance; stopping API and queue worker together', flush=True)
         stopped = True
-        run('docker', 'stop', '--time', '45', owned['api']['Id'], timeout=90)
-        info = json.loads(run('docker', 'inspect', owned['api']['Id']).stdout)[0]
-        need(not info['State']['Running'] and info['State']['ExitCode'] == 0, 'API did not exit gracefully; refusing database cutover')
+        stop_api(owned['api']['Id'])
         database_copy(database, folder / database.name)
         sig = database_signature(database)
         database_probe(data['components']['api']['runtime_id'], database, env, folder)
@@ -452,7 +476,7 @@ def deploy(revision):
                 # Never restore the database. Old program is permitted only after
                 # proving compatibility against a copy of the CURRENT database.
                 stop_api_for_recovery()
-                database_probe(owned['api']['Image'], database, env, folder)
+                database_probe(old_images['api'], database, env, folder)
                 restart_previous(old_path)
             else:
                 run('docker', 'start', owned['api']['Id'])
@@ -469,12 +493,16 @@ def rollback(folder):
     old = json.loads((folder / 'rollback.json').read_text())
     owned, others, config, database, env = preflight()
     current_path = folder / 'rollback-recovery.json'
-    config_file(current_path, pinned_config(config, {name: item['Image'] for name, item in owned.items()}))
-    run('docker', 'stop', '--time', '45', owned['api']['Id'], timeout=90)
+    old_images = current_images(owned)
+    config_file(current_path, pinned_config(config, old_images))
+    switched = False
     try:
+        stop_api(owned['api']['Id'])
+        database_copy(database, folder / ('before-rollback-' + secrets.token_hex(4) + '.db'))
         database_probe(old['config']['services']['api']['image'], database, env, folder)
         path = folder / 'rollback-target.json'
         config_file(path, old['config'])
+        switched = True
         apply_config(path)
         need(inventory()[1] == others, 'Another project/container changed')
         if old['state'] is None:
@@ -482,9 +510,13 @@ def rollback(folder):
         else:
             save(STATE, old['state'])
     except (Exception, KeyboardInterrupt):
-        stop_api_for_recovery()
-        database_probe(owned['api']['Image'], database, env, folder)
-        restart_previous(current_path)
+        if switched:
+            stop_api_for_recovery()
+            database_probe(old_images['api'], database, env, folder)
+            restart_previous(current_path)
+        else:
+            run('docker', 'start', owned['api']['Id'])
+            wait_health()
         raise
     print('ROLLBACK_SUCCESS: previous programs restored; live database retained')
 

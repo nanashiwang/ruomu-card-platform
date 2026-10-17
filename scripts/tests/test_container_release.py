@@ -168,6 +168,32 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('APP_SECRET_KEY', env)
 
 class ManagedReleaseTests(unittest.TestCase):
+    def test_forced_or_incomplete_api_shutdown_blocks_cutover(self):
+        for state in ({'Running': True, 'ExitCode': 0}, {'Running': False, 'ExitCode': 137}):
+            with patch.object(r,'run',side_effect=[subprocess.CompletedProcess([],0,'',''),subprocess.CompletedProcess([],0,json.dumps([{'State':state}]),'')]):
+                with self.assertRaises(r.ReleaseError): r.stop_api('api-id')
+
+    def test_saved_config_hash_and_environment_must_match_live_container(self):
+        for problem in ('none', 'hash', 'environment'):
+            with self.subTest(problem=problem), tempfile.TemporaryDirectory() as folder:
+                root=Path(folder).resolve()
+                config_path=root/'compose.json'
+                config_path.write_text('{}')
+                (root/'.env').write_text('fixture')
+                owned={name:container(name,name) for name in r.COMPONENTS}
+                model={'name':r.PROJECT,'services':{name:{'environment':{'KEY':'fixture-$value-$$'}} for name in r.COMPONENTS}}
+                for item in owned.values():
+                    item['Config']['Env']=['KEY=fixture-$value-$$']
+                    item['Config']['Labels'].update({'com.docker.compose.project.config_files':str(config_path),'com.docker.compose.config-hash':'correct'})
+                if problem=='environment': owned['api']['Config']['Env']=['KEY=changed']
+                if problem=='hash': owned['api']['Config']['Labels']['com.docker.compose.config-hash']='drifted'
+                responses=[subprocess.CompletedProcess([],0,json.dumps(model).replace('$','$$'),''),
+                           subprocess.CompletedProcess([],0,'\n'.join(name+' correct' for name in r.COMPONENTS),'')]
+                with patch.object(r,'ROOT',root),patch.object(r,'run',side_effect=responses):
+                    if problem=='none': self.assertEqual(r.read_config(owned),model)
+                    else:
+                        with self.assertRaises(r.ReleaseError): r.read_config(owned)
+
     def test_compose_serialized_dollars_are_decoded_exactly_once(self):
         model = {'services': {'api': {'environment': {'KEY': 'a$VALUE$$end'}}}}
         encoded = json.dumps(model).replace('$', '$$')
@@ -177,6 +203,16 @@ class ManagedReleaseTests(unittest.TestCase):
             path = Path(folder).resolve() / 'compose.json'
             r.config_file(path, decoded)
             self.assertEqual(json.loads(path.read_text()), json.loads(encoded))
+
+    def test_previous_images_must_resolve_by_content_not_mutable_tag(self):
+        owned={'api':container('api','api')}
+        owned['api']['ImageManifestDescriptor']={'digest':'sha256:'+'d'*64}
+        results=[subprocess.CompletedProcess([],1,'',''),subprocess.CompletedProcess([],0,json.dumps([{'Id':'sha256:'+'d'*64}]),'')]
+        with patch.object(r,'run',side_effect=results) as call:
+            self.assertEqual(r.current_images(owned),{'api':'sha256:'+'d'*64})
+            self.assertEqual(call.call_args.args[-1],'sha256:'+'d'*64)
+        with patch.object(r,'run',return_value=subprocess.CompletedProcess([],1,'','')):
+            with self.assertRaises(r.ReleaseError): r.current_images(owned)
 
     def test_existing_release_requires_current_image_identity(self):
         with tempfile.TemporaryDirectory() as folder:
