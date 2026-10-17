@@ -208,11 +208,19 @@ def read_config(owned):
     need(len(paths) == 1, 'Multiple Compose overrides require explicit migration review')
     config_path = safe_path(Path(paths[0]))
     need(config_path.is_file() and (config_path.is_relative_to(ROOT) or config_path.is_relative_to(STORE) or config_path.is_relative_to(BACKUPS)), 'Unexpected Compose location')
+    # Compose resolves relative bind mounts/build contexts against the original
+    # project working directory, not necessarily the checkout root. Preserve
+    # the recorded context and still require the original service config hash.
+    directories = {x['Config']['Labels'].get('com.docker.compose.project.working_dir', '') for x in owned.values()}
+    need(len(directories) == 1 and next(iter(directories)), 'Missing or inconsistent Compose working directory')
+    working_dir = safe_path(Path(next(iter(directories))))
+    need(working_dir.is_dir() and any(working_dir == root or working_dir.is_relative_to(root)
+                                    for root in (ROOT, STORE, BACKUPS)), 'Unexpected Compose working directory')
     envfile = Path('/dev/null') if config_path.is_relative_to(STORE) or config_path.is_relative_to(BACKUPS) else ROOT / '.env'
     need(envfile.is_file() or envfile == Path('/dev/null'), 'Missing existing production .env')
     if envfile != Path('/dev/null'):
         safe_path(envfile)
-    command = ['docker', 'compose', '--project-name', PROJECT, '--project-directory', str(ROOT),
+    command = ['docker', 'compose', '--project-name', PROJECT, '--project-directory', str(working_dir),
                '--env-file', str(envfile), '-f', str(config_path)]
     config = decoded_compose_config(run(*command, 'config', '--format', 'json', env=clean_env()).stdout)
     hashes = dict(line.split() for line in run(*command, 'config', '--hash', '*', env=clean_env()).stdout.splitlines())

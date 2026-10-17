@@ -168,6 +168,59 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('APP_SECRET_KEY', env)
 
 class ManagedReleaseTests(unittest.TestCase):
+    def test_existing_compose_working_directory_controls_relative_mounts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            directory = root / 'deploy'
+            directory.mkdir()
+            config_path = directory / 'compose.json'
+            config_path.write_text('{}')
+            (root / '.env').write_text('fixture')
+            own = {name: container(name, name) for name in r.COMPONENTS}
+            for item in own.values():
+                item['Config']['Labels'].update({
+                    'com.docker.compose.project.config_files': str(config_path),
+                    'com.docker.compose.project.working_dir': str(directory),
+                    'com.docker.compose.config-hash': 'verified-original-context',
+                })
+            model = {'name': r.PROJECT, 'services': {name: {'environment': {}, 'volumes': [{
+                'type': 'bind', 'source': str(directory / 'nginx' / (name + '.conf')),
+                'target': '/etc/nginx/conf.d/default.conf', 'read_only': True,
+            }]} for name in r.COMPONENTS}}
+            def command(*args, **kwargs):
+                self.assertEqual(args[args.index('--project-directory') + 1], str(directory))
+                self.assertEqual(args[args.index('--env-file') + 1], str(root / '.env'))
+                output = '\n'.join(name + ' verified-original-context' for name in r.COMPONENTS) if '--hash' in args else json.dumps(model)
+                return subprocess.CompletedProcess(args, 0, output, '')
+            with patch.object(r, 'ROOT', root), patch.object(r, 'run', side_effect=command):
+                self.assertEqual(r.read_config(own), model)
+
+    def test_missing_ambiguous_or_external_working_directory_is_not_guessed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config_path = root / 'compose.json'
+            config_path.write_text('{}')
+            (root / '.env').write_text('fixture')
+            own = {name: container(name, name) for name in r.COMPONENTS}
+            for item in own.values():
+                item['Config']['Labels']['com.docker.compose.project.config_files'] = str(config_path)
+            for directories in [('', '', ''), (str(root), str(root / 'deploy'), str(root)),
+                                ('/etc', '/etc', '/etc'), ('deploy', 'deploy', 'deploy'),
+                                (str(root / 'missing'),) * 3]:
+                with self.subTest(directories=directories):
+                    for item, directory in zip(own.values(), directories):
+                        item['Config']['Labels']['com.docker.compose.project.working_dir'] = directory
+                    with patch.object(r, 'ROOT', root), patch.object(r, 'run') as call:
+                        with self.assertRaises(r.ReleaseError): r.read_config(own)
+                        call.assert_not_called()
+            link = root / 'link'
+            link.symlink_to(root, target_is_directory=True)
+            for item in own.values():
+                item['Config']['Labels']['com.docker.compose.project.working_dir'] = str(link)
+            with patch.object(r, 'ROOT', root), patch.object(r, 'run') as call:
+                with self.assertRaises(r.ReleaseError): r.read_config(own)
+                call.assert_not_called()
+
     def test_docker_operations_cannot_follow_remote_operator_context(self):
         with patch.dict(os.environ, {'DOCKER_CONTEXT':'other-server','DOCKER_HOST':'tcp://elsewhere:2375'}), patch.object(r.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'','')) as call:
             r.run('docker','info')
@@ -190,7 +243,7 @@ class ManagedReleaseTests(unittest.TestCase):
                 model={'name':r.PROJECT,'services':{name:{'environment':{'KEY':'fixture-$value-$$'}} for name in r.COMPONENTS}}
                 for item in owned.values():
                     item['Config']['Env']=['KEY=fixture-$value-$$']
-                    item['Config']['Labels'].update({'com.docker.compose.project.config_files':str(config_path),'com.docker.compose.config-hash':'correct'})
+                    item['Config']['Labels'].update({'com.docker.compose.project.config_files':str(config_path),'com.docker.compose.project.working_dir':str(root),'com.docker.compose.config-hash':'correct'})
                 if problem=='environment': owned['api']['Config']['Env']=['KEY=changed']
                 if problem=='hash': owned['api']['Config']['Labels']['com.docker.compose.config-hash']='drifted'
                 responses=[subprocess.CompletedProcess([],0,json.dumps(model).replace('$','$$'),''),

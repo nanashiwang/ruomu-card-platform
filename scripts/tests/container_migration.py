@@ -37,14 +37,33 @@ def main():
     config = r.pinned_config(config, {name: item['runtime_id'] for name, item in data['components'].items()})
     # Test real dollar values survive resolved Compose -> private snapshot.
     config['services']['api']['environment']['RUOMU_LITERAL_FIXTURE'] = 'literal-$VALUE-$$-end'
-    baseline = r.STORE / 'baseline.json'
+    # Reproduce production: original Compose workdir is a deploy subdirectory,
+    # and frontends mount relative ./nginx/*.conf paths. Reading with ROOT would
+    # silently resolve different paths and must fail the config-hash guard.
+    legacy = r.STORE / 'legacy/deploy'
+    (legacy / 'nginx').mkdir(parents=True, mode=0o700)
+    for name in ('user', 'admin'):
+        shutil.copyfile(ROOT / f'apps/{name}/nginx.conf', legacy / f'nginx/{name}.conf')
+        config['services'][name]['volumes'] = [{
+            'type': 'bind', 'source': f'./nginx/{name}.conf',
+            'target': '/etc/nginx/conf.d/default.conf', 'read_only': True,
+        }]
+    baseline = legacy / 'compose.json'
     r.config_file(baseline, config)
-    r.apply_config(baseline)
+    r.run('docker', 'compose', '--project-name', project, '--project-directory', str(legacy),
+          '--env-file', '/dev/null', '-f', str(baseline), 'up', '-d', '--no-build', '--pull', 'never',
+          '--no-deps', '--force-recreate', *r.COMPONENTS, env=r.clean_env(), timeout=240)
+    r.wait_health()
     r.acquire = lambda _: json.loads(json.dumps(data))
     (r.STORE / revision).mkdir()
     own, other = r.inventory()
     baseline_env = dict(e.split('=', 1) for e in own['api']['Config']['Env'] if '=' in e)
     assert baseline_env['RUOMU_LITERAL_FIXTURE'] == 'literal-$VALUE-$$-end', 'baseline dollar escaping failed'
+    parsed = r.read_config(own)
+    for name in ('user', 'admin'):
+        expected = str(legacy / f'nginx/{name}.conf')
+        assert parsed['services'][name]['volumes'][0]['source'] == expected
+    print('PASS: original deploy working directory resolves relative nginx mounts and exact hashes')
     database, _ = r.db_location(own['api'])
     before = r.database_signature(database)
     try:
@@ -54,6 +73,9 @@ def main():
         current, _ = r.inventory()
         live_env = dict(e.split('=', 1) for e in current['api']['Config']['Env'] if '=' in e)
         assert live_env['RUOMU_LITERAL_FIXTURE'] == 'literal-$VALUE-$$-end'
+        for name in ('user', 'admin'):
+            mounts = current[name]['Mounts']
+            assert len(mounts) == 1 and mounts[0]['Source'] == str(legacy / f'nginx/{name}.conf') and not mounts[0]['RW']
         r.rollback(Path(state['backup']))
         assert not r.STATE.exists()
         assert r.database_signature(database) == before
