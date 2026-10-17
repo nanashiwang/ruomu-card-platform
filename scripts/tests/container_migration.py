@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -42,6 +43,8 @@ def main():
     r.acquire = lambda _: json.loads(json.dumps(data))
     (r.STORE / revision).mkdir()
     own, other = r.inventory()
+    baseline_env = dict(e.split('=', 1) for e in own['api']['Config']['Env'] if '=' in e)
+    assert baseline_env['RUOMU_LITERAL_FIXTURE'] == 'literal-$VALUE-$$-end', 'baseline dollar escaping failed'
     database, _ = r.db_location(own['api'])
     before = r.database_signature(database)
     try:
@@ -72,6 +75,9 @@ def main():
     finally:
         r.remove_probe()
         assert r.run('docker', 'inspect', r.PROBE, check=False).returncode != 0
+        for path in (r.STORE, r.BACKUPS):
+            assert path.parent == temp
+            shutil.rmtree(path)
         print('RUOMU_LEFTOVER_COMPATIBILITY_CONTAINERS=0')
 
 if __name__ == '__main__':

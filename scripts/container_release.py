@@ -80,7 +80,7 @@ def save(path, data):
 
 def source_files(root, component):
     prefix = f'apps/{component}/'
-    result = run('git', '-C', str(root), 'ls-files', '-z', prefix).stdout.split('\0')
+    result = run('git', '-C', str(root), 'ls-files', '--cached', '--others', '--exclude-standard', '-z', prefix).stdout.split('\0')
     # Ignore tests/docs/build recipe: deployment migration must preserve the
     # application inputs, including lockfiles, public assets and nginx config.
     return sorted(p for p in result if p and not p.endswith(('_test.go', '.md'))
@@ -128,7 +128,7 @@ def acquire(revision):
     directory = safe_path(STORE / revision)
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     base = f'https://github.com/{REPO}/releases/download/card-{revision}/'
-    manifest = directory / 'release.json'
+    manifest = safe_path(directory / 'release.json')
     if not manifest.exists():
         download(base + 'release.json', manifest, 65536)
     data = validate_manifest(json.loads(manifest.read_text()), revision)
@@ -141,7 +141,7 @@ def acquire(revision):
             if not pulled.returncode:
                 result = run('docker', 'image', 'inspect', item['image'])
             else:
-                archive = directory / f'{name}.tar.gz'
+                archive = safe_path(directory / f'{name}.tar.gz')
                 if archive.exists():
                     need(sha(archive) == item['archive_sha256'], 'Cached archive checksum mismatch')
                 else:
