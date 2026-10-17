@@ -24,6 +24,10 @@ RUN set -eux; \
 
 FROM alpine:latest
 
+ARG RUOMU_REVISION=development
+LABEL org.opencontainers.image.source="https://github.com/nanashiwang/ruomu-card-platform" \
+      org.opencontainers.image.revision="${RUOMU_REVISION}" \
+      org.ruomu.component="api"
 WORKDIR /app
 
 RUN apk --no-cache add ca-certificates tzdata \

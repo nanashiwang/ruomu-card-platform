@@ -1,0 +1,174 @@
+name: 卡台测试与镜像发布
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  notes:
+    name: 发布决策笔记检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.14'
+      - run: bash .agents/verify-notes.sh
+        env:
+          AGENT_NOTE_ARCHIVE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD' }}
+
+  tests:
+    name: 后端与部署测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - name: 后端全量测试
+        working-directory: apps/api
+        run: go test -p 2 -timeout 8m ./...
+      - name: 部署工具对抗测试
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: 确认测试进程退出
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          rows = subprocess.check_output(['ps', '-eo', 'comm='], text=True).splitlines()
+          assert not any(row.strip().endswith('.test') for row in rows), 'Go test process remains'
+          print('RUOMU_LEFTOVER_TEST_PROCESSES=0')
+          PY
+
+  images:
+    name: 三端镜像与真实部署演练
+    needs: [tests, notes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      packages: write
+    concurrency:
+      group: ruomu-release-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: 构建API镜像
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: apps/api
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/nanashiwang/ruomu-api:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+            RUOMU_REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=ruomu-api
+          cache-to: type=gha,scope=ruomu-api,mode=max
+      - name: 用户前台类型检查与镜像构建
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: apps/user
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/nanashiwang/ruomu-user:${{ github.sha }}
+          build-args: RUOMU_REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=ruomu-user
+          cache-to: type=gha,scope=ruomu-user,mode=max
+      - name: 管理后台类型检查与镜像构建
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: apps/admin
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/nanashiwang/ruomu-admin:${{ github.sha }}
+          build-args: RUOMU_REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=ruomu-admin
+          cache-to: type=gha,scope=ruomu-admin,mode=max
+      - name: 验证实际镜像标签和打包边界
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          revision = os.environ['REVISION']
+          for name in ('api', 'user', 'admin'):
+            image = f'ghcr.io/nanashiwang/ruomu-{name}:{revision}'
+            info = json.loads(subprocess.check_output(['docker','image','inspect',image]))[0]
+            assert info['Config']['Labels']['org.opencontainers.image.revision'] == revision
+            assert info['Config']['Labels']['org.ruomu.component'] == name
+            assert info['Architecture'] == 'amd64' and info['Os'] == 'linux'
+            subprocess.run(['docker','run','--rm','--network','none','--entrypoint','sh',image,'-ec',
+              'test ! -f /app/.env; test ! -f /app/config.yml; test ! -d /app/.git'],check=True)
+          PY
+      - name: 真实路由与数据库兼容迁移回滚
+        env:
+          REVISION: ${{ github.sha }}
+        run: python3 scripts/tests/docker-routing.py --revision "$REVISION" --migration-test
+      - name: 登录镜像仓库
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 发布固定版本与校验归档
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "card-$REVISION" --json isDraft --jq .isDraft > /tmp/ruomu-release-draft; then
+            if test "$(cat /tmp/ruomu-release-draft)" = false; then
+              echo '版本已发布，保留原始镜像与产物。'
+              exit 0
+            fi
+          else
+            gh release create "card-$REVISION" --draft --target "$REVISION" \
+              --title "卡台容器发布 ${REVISION:0:12}" --notes '三端测试与隔离部署演练通过的固定版本；生产数据库与密钥不进入发布包。' --latest=false
+          fi
+          mkdir release-card
+          for name in api user admin; do
+            image="ghcr.io/nanashiwang/ruomu-$name:$REVISION"
+            docker push "$image"
+            docker save "$image" | gzip > "release-card/$name.tar.gz"
+          done
+          python3 scripts/release_manifest.py "$REVISION" release-card
+          cp scripts/container_release.py release-card/
+          gh release upload "card-$REVISION" release-card/* --clobber
+          gh release edit "card-$REVISION" --draft=false --latest=false
+      - name: 确认隔离测试容器归零
+        if: always()
+        run: |
+          set -euo pipefail
+          if docker inspect ruomu-release-probe >/dev/null 2>&1; then
+            test "$(docker inspect --format '{{index .Config.Labels "org.ruomu.release-probe"}}' ruomu-release-probe)" = true
+            docker rm -f ruomu-release-probe
+          fi
+          python3 - <<'PY'
+          import json, subprocess
+          ids = subprocess.check_output(['docker','ps','-aq'],text=True).split()
+          objects = json.loads(subprocess.check_output(['docker','inspect',*ids])) if ids else []
+          owned = [x for x in objects if (x['Config'].get('Labels') or {}).get('com.docker.compose.project','').startswith('ruomu-routing-')]
+          if owned:
+            subprocess.run(['docker','rm','-f',*[x['Id'] for x in owned]],check=True)
+          remaining = subprocess.check_output(['docker','ps','-aq','--filter','name=^/ruomu-release-probe$'],text=True).strip()
+          assert not remaining
+          print('RUOMU_LEFTOVER_TEST_CONTAINERS=0')
+          print('RUOMU_LEFTOVER_TEST_BACKGROUND_PROCESSES=0')
+          PY

@@ -3,6 +3,7 @@
 No production env, payment credentials or external payment request is used.
 """
 import importlib.util
+import argparse
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,10 @@ def free_port():
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--revision', default='')
+    parser.add_argument('--migration-test', action='store_true')
+    args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="ruomu-routing-") as tmp:
         tmp = Path(tmp)
         os.chmod(tmp, 0o700)
@@ -69,6 +74,12 @@ def main():
         os.environ["DATABASE_DSN"] = "/app/db/ruomu.db"
         os.environ["EMAIL_ENABLED"] = "false"
         command = deployment.compose_command()
+        if args.revision:
+            override = tmp / 'images.json'
+            override.write_text(json.dumps({'services': {name: {
+                'image': f'ghcr.io/nanashiwang/ruomu-{name}:{args.revision}', 'pull_policy': 'never'
+            } for name in ('api', 'user', 'admin')}}))
+            command += ['-f', str(override)]
         try:
             config = deployment.load_config(command)
             edge, directory = deployment.validate_config(config)
@@ -83,10 +94,11 @@ def main():
             except deployment.CheckError:
                 pass
             key.write_bytes(original)
-            print("构建实际生产 API、用户站与管理站镜像……", flush=True)
-            subprocess.run(command + ["build"], check=True, cwd=ROOT)
+            if not args.revision:
+                print("构建实际生产 API、用户站与管理站镜像……", flush=True)
+                subprocess.run(command + ["build"], check=True, cwd=ROOT)
             subprocess.run(["bash", "scripts/deploy.sh", "--check"], check=True, cwd=ROOT)
-            subprocess.run(command + ["up", "-d", "--wait", "--wait-timeout", "180"], check=True, cwd=ROOT)
+            subprocess.run(command + ["up", "-d", "--no-build", "--wait", "--wait-timeout", "180"], check=True, cwd=ROOT)
             deployment.probe_routes(edge, "127.0.0.1", https_port, ca_bundle)
             for domain in domains:
                 response = deployment.run([
@@ -104,9 +116,21 @@ def main():
             health = json.loads(deployment.run(command + ["ps", "--format", "json", "api"], "读取 API 状态失败"))
             assert health["Health"] == "healthy"
             print("Docker 验证通过：真实三端构建、TLS/SNI、HTTP 308、回调处理器日志、SPA 返回页、Redis 认证。", flush=True)
+            if args.migration_test:
+                assert os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
+                test = ROOT / 'scripts/tests/container_migration.py'
+                subprocess.run(['sudo', '--preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT', 'python3', str(test),
+                                os.environ['COMPOSE_PROJECT_NAME'], str(tmp), args.revision], check=True)
+                deployment.probe_routes(edge, '127.0.0.1', https_port, ca_bundle)
+                print('PASS: external fixture TLS/routes still work after migration and rollback', flush=True)
         finally:
             # Only the unique test project is removed, including its disposable database.
             subprocess.run(command + ["down", "--volumes", "--remove-orphans", "--rmi", "local"], cwd=ROOT, check=True)
+            remaining = subprocess.check_output(['docker', 'ps', '-aq', '--filter',
+                'label=com.docker.compose.project=' + os.environ['COMPOSE_PROJECT_NAME']], text=True).strip()
+            assert not remaining, 'Temporary routing containers remain'
+            print('RUOMU_LEFTOVER_TEST_CONTAINERS=0', flush=True)
+            print('RUOMU_LEFTOVER_TEST_BACKGROUND_PROCESSES=0', flush=True)
 
 
 if __name__ == "__main__":
