@@ -54,6 +54,11 @@ services:
       retries: 10
 
   api:
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     build:
       context: ../apps/api
       args:
@@ -99,6 +104,11 @@ services:
       start_period: 30s
 
   user:
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     build:
       context: ../apps/user
     restart: unless-stopped
@@ -109,6 +119,11 @@ services:
       retries: 10
 
   admin:
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     build:
       context: ../apps/admin
     restart: unless-stopped

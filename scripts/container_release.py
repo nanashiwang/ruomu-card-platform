@@ -261,6 +261,52 @@ def pinned_config(config, images):
         service['pull_policy'] = 'never'
     return result
 
+def bounded_logging(config, owned):
+    """Limit local output without expanding a smaller cap or changing drivers."""
+    result = json.loads(json.dumps(config))
+    policies = {}
+    for name in COMPONENTS:
+        live = owned[name]['HostConfig']['LogConfig']
+        driver = live.get('Type')
+        if driver not in {'json-file', 'local'}:
+            print(f'LOG_POLICY: {name} existing non-file/disabled driver retained', flush=True)
+            continue
+        options = dict(live.get('Config') or {})
+        raw = options.get('max-size', '-1')
+        if raw != '-1':
+            match = re.fullmatch(r'([0-9]+)([kKmMgG]?[bB]?)', raw)
+            need(match is not None, f'{name}: unrecognized log size; review existing policy')
+            unit = match.group(2).lower().rstrip('b')
+            size = int(match.group(1)) * {'': 1, 'k': 1024, 'm': 1024**2, 'g': 1024**3}[unit]
+            need(size > 0, f'{name}: invalid log size')
+        else:
+            size = 0
+        if size == 0 or size > 20 * 1024**2:
+            options['max-size'] = '20m'
+        raw_count = options.get('max-file')
+        if raw_count is None:
+            # A finite json-file policy defaults to one file; preserve it.
+            count = 1 if driver == 'json-file' and size > 0 else 3
+        else:
+            need(raw_count.isdecimal() and int(raw_count) > 0, f'{name}: invalid log file count')
+            count = int(raw_count)
+        options['max-file'] = str(min(count, 3))
+        policy = {'driver': driver, 'options': options}
+        result['services'][name]['logging'] = policy
+        policies[name] = policy
+        print(f"LOG_POLICY: {name} {driver} max-size={options['max-size']} max-file={options['max-file']}", flush=True)
+    return result, policies
+
+
+def verify_logging(owned, policies):
+    for name, expected in policies.items():
+        actual = owned[name]['HostConfig']['LogConfig']
+        need(actual.get('Type') == expected['driver'] and
+             all((actual.get('Config') or {}).get(k) == v for k, v in expected['options'].items()),
+             f'{name}: Docker logging policy was not applied')
+    print('PASS: targeted container log limits verified', flush=True)
+
+
 def config_file(path, config):
     # Compose interpolates even JSON. Escape literal dollars in resolved values.
     def escape(value):
@@ -455,6 +501,7 @@ def deploy(revision):
     old_images = current_images(owned)
     previous = pinned_config(config, old_images)
     next_config = pinned_config(config, {name: item['runtime_id'] for name, item in data['components'].items()})
+    next_config, log_policies = bounded_logging(next_config, owned)
     old_path, new_path = folder / 'previous.json', STORE / revision / 'compose.json'
     config_file(old_path, previous)
     config_file(new_path, next_config)
@@ -478,9 +525,10 @@ def deploy(revision):
         current = apply_config(new_path)
         for name, item in current.items():
             need(item['Config']['Image'] == data['components'][name]['runtime_id'], 'Running image reference differs from release')
+        verify_logging(current, log_policies)
         need(protected_files(current) == before_files, 'Protected configuration changed')
         need(inventory()[1] == others, 'Another project/container changed during deployment')
-        save(STATE, {'revision': revision, 'components': data['components'], 'backup': str(folder), 'compose': str(new_path)})
+        save(STATE, {'revision': revision, 'components': data['components'], 'backup': str(folder), 'compose': str(new_path), 'logging': log_policies})
         stopped = False
         print('PASS: preserved configuration, volumes and other project containers', flush=True)
     finally:

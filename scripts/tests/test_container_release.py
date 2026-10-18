@@ -328,4 +328,63 @@ class ManagedReleaseTests(unittest.TestCase):
                         result=r.acquire(REV)
                         self.assertTrue(all(x['runtime_id']=='sha256:'+'f'*64 for x in result['components'].values()))
 
+class LoggingTests(unittest.TestCase):
+    def policy_fixture(self, driver='json-file', options=None):
+        config = {'services': {name: {'environment': {'KEY': 'unchanged'}, 'image': 'old'} for name in (*r.COMPONENTS, 'redis', 'gateway')}}
+        owned = {name: {'HostConfig': {'LogConfig': {'Type': driver, 'Config': options or {}}}} for name in r.COMPONENTS}
+        return config, owned
+
+    def test_default_logs_are_bounded_without_touching_other_services(self):
+        config, owned = self.policy_fixture()
+        original = copy.deepcopy(config)
+        result, policies = r.bounded_logging(config, owned)
+        self.assertEqual(config, original)
+        for name in ('redis', 'gateway'):
+            self.assertEqual(result['services'][name], original['services'][name])
+        for name in r.COMPONENTS:
+            self.assertEqual(result['services'][name]['logging'], {'driver': 'json-file', 'options': {'max-size': '20m', 'max-file': '3'}})
+            self.assertEqual(result['services'][name]['environment'], original['services'][name]['environment'])
+        self.assertEqual(set(policies), set(r.COMPONENTS))
+
+    def test_smaller_limits_and_extra_options_survive(self):
+        config, owned = self.policy_fixture(options={'max-size': '5MB', 'max-file': '2', 'compress': 'true', 'tag': 'existing-tag'})
+        result, policies = r.bounded_logging(config, owned)
+        self.assertEqual(policies['api']['options'], owned['api']['HostConfig']['LogConfig']['Config'])
+        config, owned = self.policy_fixture(options={'max-size': '1m'})
+        self.assertEqual(r.bounded_logging(config, owned)[1]['api']['options']['max-file'], '1')
+
+    def test_large_and_unlimited_limits_are_reduced(self):
+        for driver, options in [('json-file', {'max-size': '-1', 'max-file': '8'}), ('json-file', {'max-size': '200m', 'max-file': '6'}), ('local', {})]:
+            with self.subTest(driver=driver, options=options):
+                config, owned = self.policy_fixture(driver, options)
+                _, policies = r.bounded_logging(config, owned)
+                self.assertEqual(policies['api']['driver'], driver)
+                self.assertEqual(policies['api']['options']['max-size'], '20m')
+                self.assertEqual(policies['api']['options']['max-file'], '3')
+
+    def test_custom_drivers_and_disabled_logging_are_not_replaced(self):
+        for driver in ('none', 'journald', 'syslog', 'fluentd'):
+            config, owned = self.policy_fixture(driver, {'tag':'keep'})
+            for name in r.COMPONENTS:
+                config['services'][name]['logging'] = {'driver':driver, 'options':{'tag':'keep'}}
+            original = copy.deepcopy(config)
+            updated, policies = r.bounded_logging(config, owned)
+            self.assertEqual(updated, original)
+            self.assertEqual(policies, {})
+
+    def test_invalid_log_limits_stop_before_service_changes(self):
+        for options in ({'max-size':'bad'}, {'max-size':'0'}, {'max-file':'0'}, {'max-file':'-1'}, {'max-file':'x'}):
+            config, owned = self.policy_fixture(options=options)
+            with self.subTest(options=options), self.assertRaises(r.ReleaseError):
+                r.bounded_logging(config, owned)
+
+    def test_verify_checks_actual_docker_configuration(self):
+        config, owned = self.policy_fixture()
+        _, policies = r.bounded_logging(config, owned)
+        for name in r.COMPONENTS:
+            owned[name]['HostConfig']['LogConfig']['Config'] = dict(policies[name]['options'])
+        r.verify_logging(owned, policies)
+        owned['api']['HostConfig']['LogConfig']['Config']['max-file'] = '9'
+        with self.assertRaises(r.ReleaseError): r.verify_logging(owned, policies)
+
 if __name__ == '__main__': unittest.main()
