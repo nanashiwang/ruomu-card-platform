@@ -149,7 +149,7 @@ jobs:
             docker save "$image" | gzip > "release-card/$name.tar.gz"
           done
           python3 scripts/release_manifest.py "$REVISION" release-card
-          cp scripts/container_release.py release-card/
+          cp scripts/container_release.py scripts/storage_audit.py release-card/
           gh release upload "card-$REVISION" release-card/* --clobber
           gh release edit "card-$REVISION" --draft=false --latest=false
       - name: 确认隔离测试容器归零

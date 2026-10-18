@@ -37,6 +37,9 @@ def main():
     config = r.pinned_config(config, {name: item['runtime_id'] for name, item in data['components'].items()})
     # Test real dollar values survive resolved Compose -> private snapshot.
     config['services']['api']['environment']['RUOMU_LITERAL_FIXTURE'] = 'literal-$VALUE-$$-end'
+    # Start with unbounded json-file logs, as on a legacy installation.
+    for name in r.COMPONENTS:
+        config['services'][name]['logging'] = {'driver': 'json-file', 'options': {'max-size': '-1'}}
     # Reproduce production: original Compose workdir is a deploy subdirectory,
     # and frontends mount relative ./nginx/*.conf paths. Reading with ROOT would
     # silently resolve different paths and must fail the config-hash guard.
@@ -71,6 +74,10 @@ def main():
         assert r.database_signature(database) == before
         state = json.loads(r.STATE.read_text())
         current, _ = r.inventory()
+        r.verify_logging(current, state['logging'])
+        assert all(current[n]['HostConfig']['LogConfig']['Config']['max-size'] == '20m' for n in r.COMPONENTS)
+        assert all(current[n]['HostConfig']['LogConfig']['Config']['max-file'] == '3' for n in r.COMPONENTS)
+        print('PASS: actual application containers have bounded Docker logs')
         live_env = dict(e.split('=', 1) for e in current['api']['Config']['Env'] if '=' in e)
         assert live_env['RUOMU_LITERAL_FIXTURE'] == 'literal-$VALUE-$$-end'
         for name in ('user', 'admin'):
@@ -78,6 +85,9 @@ def main():
             assert len(mounts) == 1 and mounts[0]['Source'] == str(legacy / f'nginx/{name}.conf') and not mounts[0]['RW']
         r.rollback(Path(state['backup']))
         assert not r.STATE.exists()
+        restored, _ = r.inventory()
+        assert all(restored[n]['HostConfig']['LogConfig']['Config']['max-size'] == '-1' for n in r.COMPONENTS)
+        print('PASS: rollback restores previous log configuration')
         assert r.database_signature(database) == before
         print('PASS: real source/config checks, isolated DB clone, three-image migration and rollback')
         original_apply = r.apply_config
