@@ -107,13 +107,6 @@
         </div>
       </div>
       <div class="mx-auto flex w-full max-w-[1180px] flex-wrap items-center justify-between gap-3.5 border-t px-6 pb-[30px] pt-[18px] text-[13.5px] text-muted-foreground">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>© {{ year }} {{ brandName }}</span>
-          <a href="https://github.com/nanashiwang/ruomu-card-platform" target="_blank" rel="noopener noreferrer" aria-label="若木云卡 on GitHub" class="inline-flex items-center gap-1.5 hover:text-primary">
-            <Github class="h-[15px] w-[15px]" />
-            <span>若木云卡</span>
-          </a>
-        </div>
         <span>简体中文 · 繁體 · English</span>
       </div>
     </footer>
@@ -124,7 +117,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  Search, Moon, Sun, ShoppingCart, Languages, Menu, X, User, Info, ClipboardList, LogOut, Github,
+  Search, Moon, Sun, ShoppingCart, Languages, Menu, X, User, Info, ClipboardList, LogOut,
 } from 'lucide-vue-next'
 import { useAppStore } from '../../../stores/app'
 import { useCartStore } from '../../../stores/cart'
@@ -154,7 +147,6 @@ const moreOpen = ref(false)
 const langEl = ref<HTMLElement | null>(null)
 const moreEl = ref<HTMLElement | null>(null)
 
-const year = new Date().getFullYear()
 
 const brandName = computed(() => String(appStore.config?.brand?.site_name || '').trim() || '若木云卡')
 const brandLogo = computed(() => {
