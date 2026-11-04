@@ -1,8 +1,10 @@
 import { createI18n } from 'vue-i18n'
+import { storefrontMessages } from './storefront'
 
 // 语言包
 const messages = {
     'zh-CN': {
+        storefront: storefrontMessages['zh-CN'],
         common: {
             siteName: '若木云卡',
             loading: '加载中...',
@@ -1744,6 +1746,7 @@ const messages = {
         },
     },
     'zh-TW': {
+        storefront: storefrontMessages['zh-TW'],
         common: {
             siteName: '若木云卡',
             loading: '載入中...',
@@ -3485,6 +3488,7 @@ const messages = {
         },
     },
     'en-US': {
+        storefront: storefrontMessages['en-US'],
         common: {
             siteName: '若木云卡',
             loading: 'Loading...',

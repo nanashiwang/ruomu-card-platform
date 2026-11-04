@@ -223,7 +223,7 @@ const {
   clearSearch,
   initialize: listInitialize,
   cleanup: listCleanup,
-} = useProductList({ pageSize: 20, homeRouteName: 'home' })
+} = useProductList({ pageSize: 20, homeRouteName: 'products' })
 
 const listProductGroups = useProductListGroups(listProducts, listCategoryMap)
 
