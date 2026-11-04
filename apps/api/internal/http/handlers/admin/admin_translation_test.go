@@ -29,6 +29,8 @@ func TestTranslationSettingsCannotBypassDedicatedEndpoint(t *testing.T) {
 		handler            gin.HandlerFunc
 	}{
 		{"GET", "/settings?key=translation_config", "", h.GetSettings},
+		{"GET", "/settings?key=translation_cache", "", h.GetSettings},
+		{"PUT", "/settings", `{"key":"translation_cache","value":{"api_key":"bypass"}}`, h.UpdateSettings},
 		{"PUT", "/settings", `{"key":"translation_config","value":{"api_key":"bypass"}}`, h.UpdateSettings},
 		{"GET", "/settings/translation", "", h.GetTranslationSettings},
 		{"PUT", "/settings/translation", `{"enabled":false,"base_url":"https://example.com/v1","model":"qwen-mt-flash","api_key":""}`, h.UpdateTranslationSettings},

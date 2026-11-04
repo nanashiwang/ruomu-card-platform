@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -294,10 +295,14 @@ const closeModal = () => {
   clearErrors()
 }
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form, () => showModal.value)
+
 const handleSubmit = async () => {
+  if (submitting.value || translating.value) return
   if (!validate({ slug: form.slug, type: form.type, title: form.title['zh-CN'] } as Record<string, unknown>)) return
   submitting.value = true
   try {
+    if (!await prepareTranslations()) return
     const { product_ids, ...rest } = form
     const payload: Partial<AdminPost> & { product_ids?: number[] } = { ...rest }
     payload.category_id = form.type === 'blog' ? form.category_id : null
@@ -470,7 +475,7 @@ watch(
           <DialogDescription>{{ isEditing ? t('admin.posts.modal.editDescription') : t('admin.posts.modal.createDescription') }}</DialogDescription>
         </DialogHeader>
         <form class="space-y-6" @submit.prevent="!translating && handleSubmit()">
-          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
+          <TranslateContent :automatic-status="translationStatus" :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="border-b border-border">
             <div class="flex gap-4 overflow-x-auto pb-1">
               <button

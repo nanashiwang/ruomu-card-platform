@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import SettingsTranslationTab from './components/SettingsTranslationTab.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -722,7 +723,10 @@ const saveDashboardSettings = async () => {
   await adminAPI.updateSettings(payload)
 }
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form)
+
 const saveSettings = async () => {
+  if (loading.value) return
   if (translating.value) return
   if (currentTab.value === 'translation') { await translationTabRef.value?.save(); return }
   if (currentTab.value === 'smtp') {
@@ -756,6 +760,7 @@ const saveSettings = async () => {
     } else if (currentTab.value === 'dashboard') {
       await saveDashboardSettings()
     } else {
+      if (!await prepareTranslations()) return
       await saveRegistrationSettings()
       await saveOrderSettings()
       await saveSiteSettings()
@@ -799,7 +804,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <TranslateContent v-if="['basic', 'about', 'legal'].includes(currentTab)" :value="currentTab === 'basic' ? { brand: form.brand, seo: form.seo } : currentTab === 'about' ? form.about : form.legal" :disabled="loading" @busy="translating = $event" />
+    <TranslateContent :automatic-status="translationStatus" v-if="['basic', 'about', 'legal'].includes(currentTab)" :value="currentTab === 'basic' ? { brand: form.brand, seo: form.seo } : currentTab === 'about' ? form.about : form.legal" :disabled="loading" @busy="translating = $event" />
 
     <Tabs v-model="currentTab" class="flex flex-col gap-6">
       <TabsList class="h-auto flex-wrap gap-1">

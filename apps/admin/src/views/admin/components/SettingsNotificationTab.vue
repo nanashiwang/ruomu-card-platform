@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -241,10 +242,13 @@ watch(() => props.data, () => {
   void syncIgnoredProductsFromText()
 }, { deep: true })
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form.templates)
+
 const save = async () => {
-  if (translating.value) return
+  if (submitting.value || translating.value) return
   submitting.value = true
   try {
+    if (!await prepareTranslations()) return
     syncIgnoredProductIDsText()
     const payload = {
       default_locale: form.default_locale,
@@ -286,7 +290,7 @@ defineExpose({ save, submitting, translating })
 
 <template>
   <div class="space-y-6">
-    <TranslateContent :value="form.templates" :disabled="submitting" @busy="translating = $event" />
+    <TranslateContent :automatic-status="translationStatus" :value="form.templates" :disabled="submitting" @busy="translating = $event" />
     <div class="rounded-xl border border-border bg-card">
       <div class="border-b border-border bg-muted/40 px-6 py-4">
         <h2 class="text-lg font-semibold">{{ t('admin.settings.notification.title') }}</h2>

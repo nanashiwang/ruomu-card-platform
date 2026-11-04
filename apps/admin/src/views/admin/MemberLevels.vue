@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -133,7 +134,10 @@ const closeModal = () => {
   editingId.value = null
 }
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form, () => showModal.value)
+
 const handleSubmit = async () => {
+  if (submitting.value || translating.value) return
   error.value = ''
   if (!form.slug.trim()) {
     error.value = t('admin.memberLevels.form.slug') + ' is required'
@@ -141,6 +145,7 @@ const handleSubmit = async () => {
   }
   submitting.value = true
   try {
+    if (!await prepareTranslations()) return
     const payload = {
       name: form.name,
       slug: form.slug.trim(),
@@ -330,7 +335,7 @@ onMounted(() => {
           </DialogTitle>
         </DialogHeader>
         <form class="space-y-4" @submit.prevent="!translating && handleSubmit()">
-          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
+          <TranslateContent :automatic-status="translationStatus" :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <!-- Multi-locale name -->
             <div class="md:col-span-2">

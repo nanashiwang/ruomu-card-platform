@@ -16,7 +16,7 @@ import (
 func (h *Handler) GetSettings(c *gin.Context) {
 	key := c.DefaultQuery("key", constants.SettingKeySiteConfig)
 
-	if key == service.TranslationSettingKey {
+	if key == service.TranslationSettingKey || key == service.TranslationCacheSettingKey {
 		response.Forbidden(c, "请使用独立的翻译配置接口")
 		return
 	}
@@ -47,7 +47,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	if req.Key == service.TranslationSettingKey {
+	if req.Key == service.TranslationSettingKey || req.Key == service.TranslationCacheSettingKey {
 		response.Forbidden(c, "请使用独立的翻译配置接口")
 		return
 	}

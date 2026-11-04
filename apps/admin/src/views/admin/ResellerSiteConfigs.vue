@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
@@ -304,11 +305,14 @@ const removeFooterLink = (index: number) => {
   form.footer_links.splice(index, 1)
 }
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form, () => showEditor.value)
+
 const saveConfig = async () => {
-  if (translating.value) return
+  if (saving.value || translating.value) return
   if (!selectedRow.value) return
   saving.value = true
   try {
+    if (!await prepareTranslations()) return
     const response = await adminAPI.updateResellerSiteConfig(selectedRow.value.reseller_id, buildPayload())
     selectedRow.value = response.data.data as AdminResellerSiteConfig
     assignForm(normalizeConfigForForm(selectedRow.value))
@@ -453,7 +457,7 @@ onMounted(() => {
           <DialogTitle>{{ t('admin.resellerSiteConfigs.editor.title', { id: selectedRow?.reseller_id || '-' }) }}</DialogTitle>
         </DialogHeader>
 
-        <TranslateContent :value="form" :disabled="saving" @busy="translating = $event" />
+        <TranslateContent :automatic-status="translationStatus" :value="form" :disabled="saving" @busy="translating = $event" />
         <Tabs v-model="activeTab" class="mt-2">
           <TabsList class="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/40 p-1">
             <TabsTrigger value="brand" class="flex-none">{{ t('admin.resellerSiteConfigs.editor.sections.brand') }}</TabsTrigger>

@@ -6,7 +6,7 @@ import { useAdminAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { notifyError, notifySuccess } from '@/utils/notify'
 import { translateForm, type TranslationTarget } from '@/utils/translation'
-const props = defineProps<{ value: object; disabled?: boolean }>()
+const props = defineProps<{ value: object; disabled?: boolean; automaticStatus?: string }>()
 const emit = defineEmits<{ busy: [value: boolean] }>()
 const { t } = useI18n()
 const auth = useAdminAuthStore()
@@ -33,12 +33,16 @@ async function run() {
 </script>
 <template>
  <div v-if="auth.hasPermission('POST:/admin/translations')" class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-  <div class="flex flex-wrap items-center gap-3 text-sm">
+  <p v-if="automaticStatus" role="status" class="text-sm font-medium">{{ automaticStatus }}</p>
+  <p class="text-xs text-muted-foreground">{{ t('translation.description') }}</p>
+  <details>
+   <summary class="cursor-pointer text-xs text-muted-foreground">{{ t('translation.manualTools') }}</summary>
+  <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
    <Button type="button" variant="outline" size="sm" :disabled="busy || disabled || !targets.length" @click="run">{{ busy ? t('translation.progress', { done, total }) : t('translation.translate') }}</Button>
    <label class="flex items-center gap-1"><input v-model="targets" type="checkbox" value="zh-TW" :disabled="busy || disabled">{{ t('admin.common.lang.zhTW') }}</label>
    <label class="flex items-center gap-1"><input v-model="targets" type="checkbox" value="en-US" :disabled="busy || disabled">{{ t('admin.common.lang.enUS') }}</label>
    <label class="flex items-center gap-1"><input v-model="overwrite" type="checkbox" :disabled="busy || disabled">{{ t('translation.overwrite') }}</label>
   </div>
-  <p class="text-xs text-muted-foreground">{{ t('translation.description') }}</p>
+  </details>
  </div>
 </template>

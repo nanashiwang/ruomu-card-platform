@@ -41,3 +41,33 @@ test('closed editor does not apply or continue requests; duplicate text is reuse
  await translateForm(closed, ['en-US'], false, async () => { calls++; active = false; return 'One' }, progress, () => active)
  assert.equal(calls, 1); assert.equal(closed.a['en-US'], undefined)
 })
+
+const { prepareAutomaticTranslation } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
+const automatic = async () => ({ enabled: true, auto_on_save: true })
+test('automatic save replaces all existing translations and clears empty Chinese without model calls', async () => {
+ const form = { name: { 'zh-CN': '新中文', 'zh-TW': '舊譯文', 'en-US': 'Manual old' }, empty: { 'zh-CN': '<p><br></p>', 'en-US': 'Obsolete', 'zh-TW': '過期' } }
+ const calls = []
+ await prepareAutomaticTranslation(form, automatic, async (text, lang) => { calls.push(text); return `${lang}:new` }, progress)
+ assert.equal(form.name['en-US'], 'en-US:new'); assert.equal(form.name['zh-TW'], 'zh-TW:new')
+ assert.equal(form.empty['en-US'], ''); assert.equal(form.empty['zh-TW'], ''); assert.equal(calls.length, 2)
+})
+test('disabled service or automatic mode preserves manual content', async () => {
+ for (const config of [{enabled:false,auto_on_save:true},{enabled:true,auto_on_save:false}]) {
+  const form = { name: {'zh-CN':'中文','en-US':'Manual'} }
+  await prepareAutomaticTranslation(form, async () => config, async () => { throw Error('must not call') }, progress)
+  assert.equal(form.name['en-US'], 'Manual'); assert.equal(form.name['zh-TW'], undefined)
+ }
+})
+test('saving checks configuration and provider failures before applying any translated fields', async () => {
+ const form = { name: {'zh-CN':'中文','en-US':'Manual'} }; const original = JSON.stringify(form)
+ await assert.rejects(prepareAutomaticTranslation(form, async () => { throw Error('config offline') }, async () => 'x', progress), /config offline/)
+ await assert.rejects(prepareAutomaticTranslation(form, automatic, async (_, lang) => { if(lang === 'en-US') throw Error('quota'); return 'new' }, progress), /quota/)
+ assert.equal(JSON.stringify(form), original)
+})
+test('edits during config fetch and closing the editor cancel saving', async () => {
+ const form = { name: {'zh-CN':'原文'} }
+ await assert.rejects(prepareAutomaticTranslation(form, async () => { form.name['zh-CN']='改文'; return automatic() }, async () => 'x', progress), /translationChanged/)
+ let active = true
+ await assert.rejects(prepareAutomaticTranslation(form, automatic, async () => { active=false; return 'x' }, progress, () => active), /translationCanceled/)
+ assert.equal(form.name['en-US'], undefined)
+})

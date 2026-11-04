@@ -23,18 +23,19 @@ const TranslationSettingKey = "translation_config"
 
 // TranslationSetting 的密钥仅供服务端调用，HTTP 响应必须使用 Public。
 type TranslationSetting struct {
-	Enabled bool   `json:"enabled"`
-	BaseURL string `json:"base_url"`
-	Model   string `json:"model"`
-	APIKey  string `json:"api_key"`
+	Enabled    bool   `json:"enabled"`
+	AutoOnSave bool   `json:"auto_on_save"`
+	BaseURL    string `json:"base_url"`
+	Model      string `json:"model"`
+	APIKey     string `json:"api_key"`
 }
 
 func (s TranslationSetting) Public() map[string]interface{} {
-	return map[string]interface{}{"enabled": s.Enabled, "base_url": s.BaseURL, "model": s.Model, "has_api_key": s.APIKey != ""}
+	return map[string]interface{}{"enabled": s.Enabled, "auto_on_save": s.AutoOnSave, "base_url": s.BaseURL, "model": s.Model, "has_api_key": s.APIKey != ""}
 }
 
 func (s *SettingService) GetTranslationSetting() (TranslationSetting, error) {
-	result := TranslationSetting{BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen-mt-flash"}
+	result := TranslationSetting{AutoOnSave: true, BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen-mt-flash"}
 	raw, err := s.GetByKey(TranslationSettingKey)
 	if err != nil {
 		return result, errors.New("读取翻译配置失败")
@@ -172,7 +173,7 @@ func restoreTranslation(text string, values []string) (string, error) {
 	return text, nil
 }
 
-func (s *SettingService) Translate(ctx context.Context, text, target string) (string, error) {
+func (s *SettingService) Translate(ctx context.Context, text, target string, useCache ...bool) (string, error) {
 	if target == "zh-CN" || translationLanguages[target] == "" {
 		return "", errors.New("目标语言仅支持繁体中文和英文")
 	}
@@ -189,13 +190,33 @@ func (s *SettingService) Translate(ctx context.Context, text, target string) (st
 	if err = validateTranslationSetting(setting); err != nil {
 		return "", err
 	}
+	key := translationCacheKey(setting, text, target)
+	if len(useCache) > 0 && useCache[0] {
+		if !setting.AutoOnSave {
+			return "", errors.New("自动翻译已关闭，请重新保存")
+		}
+		cached, cacheErr := s.cachedTranslation(key)
+		if cacheErr != nil {
+			return "", cacheErr
+		}
+		if cached != "" {
+			return cached, nil
+		}
+	}
 	select {
 	case translationSlots <- struct{}{}:
 		defer func() { <-translationSlots }()
 	default:
 		return "", errors.New("翻译任务繁忙，请稍后重试")
 	}
-	return requestTranslation(ctx, translationHTTPClient, setting, text, target)
+	translated, err := requestTranslation(ctx, translationHTTPClient, setting, text, target)
+	if err != nil {
+		return "", err
+	}
+	if err = s.rememberTranslation(key, translated); err != nil {
+		return "", err
+	}
+	return translated, nil
 }
 
 func requestTranslation(ctx context.Context, client *http.Client, setting TranslationSetting, text, target string) (string, error) {

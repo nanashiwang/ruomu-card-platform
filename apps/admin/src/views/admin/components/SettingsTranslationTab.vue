@@ -13,7 +13,7 @@ const auth = useAdminAuthStore()
 const submitting = ref(false)
 const loaded = ref(false)
 const result = ref('')
-const form = reactive({ enabled:false, base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-mt-flash', api_key:'', has_api_key:false, clear_api_key:false })
+const form = reactive({ enabled:false, auto_on_save:true, base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-mt-flash', api_key:'', has_api_key:false, clear_api_key:false })
 async function load() {
  try { const res = await api.get('/admin/settings/translation'); Object.assign(form,res.data.data); loaded.value=true } catch { /* API client reports failures. */ }
 }
@@ -35,6 +35,8 @@ defineExpose({save,submitting})
   <p class="text-sm text-muted-foreground">{{ t('translation.configHint') }}</p>
   <fieldset :disabled="submitting || !loaded || !auth.hasPermission('PUT:/admin/settings/translation')" class="space-y-4 max-w-2xl">
    <div class="flex items-center gap-2"><Switch id="translation-enabled" v-model="form.enabled" /><Label for="translation-enabled">{{ t('translation.enabled') }}</Label></div>
+   <div class="flex items-center gap-2"><Switch id="translation-auto" v-model="form.auto_on_save" /><Label for="translation-auto">{{ t('translation.autoOnSave') }}</Label></div>
+   <p class="text-xs text-muted-foreground">{{ t('translation.autoHint') }}</p>
    <div class="space-y-2"><Label for="translation-url">{{ t('translation.baseURL') }}</Label><Input id="translation-url" v-model="form.base_url" type="url" /></div>
    <div class="space-y-2"><Label for="translation-model">{{ t('translation.model') }}</Label><Input id="translation-model" v-model="form.model" placeholder="qwen-mt-flash" /></div>
    <div class="space-y-2"><Label for="translation-key">{{ t('translation.apiKey') }}</Label><Input id="translation-key" v-model="form.api_key" type="password" autocomplete="new-password" :placeholder="t(form.has_api_key ? 'translation.keySaved' : 'translation.keyEmpty')" /></div>

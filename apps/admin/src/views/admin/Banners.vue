@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
@@ -247,10 +248,14 @@ const buildPayload = () => ({
   sort_order: Number(form.sort_order || 0),
 })
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form, () => showModal.value)
+
 const handleSubmit = async () => {
+  if (submitting.value || translating.value) return
   if (!validate({ name: form.name, position: form.position, image: form.image } as Record<string, unknown>)) return
   submitting.value = true
   try {
+    if (!await prepareTranslations()) return
     const payload = buildPayload()
     if (isEditing.value && form.id) {
       await adminAPI.updateBanner(form.id, payload)
@@ -410,7 +415,7 @@ watch(
         </DialogHeader>
 
         <form class="space-y-6" @submit.prevent="!translating && handleSubmit()">
-          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
+          <TranslateContent :automatic-status="translationStatus" :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="border-b border-border">
             <div class="flex gap-4 overflow-x-auto pb-1">
               <button

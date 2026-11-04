@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -108,10 +109,14 @@ const openEdit = (cat: PostCategory) => {
 
 const closeModal = () => { showModal.value = false; clearErrors() }
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form, () => showModal.value)
+
 const submit = async () => {
+  if (submitting.value || translating.value) return
   if (!validate({ slug: form.slug, name: form.name['zh-CN'] } as Record<string,unknown>)) return
   submitting.value = true
   try {
+    if (!await prepareTranslations()) return
     const payload = { ...form }
     if (isEditing.value) await adminAPI.updatePostCategory(form.id, payload)
     else await adminAPI.createPostCategory(payload)
@@ -212,7 +217,7 @@ watch(() => route.query.category_id, (v) => { if (v) openEditById(v) })
       <DialogScrollContent class="w-[calc(100vw-1rem)] max-w-lg p-4 sm:p-6" @interact-outside="(e) => e.preventDefault()">
         <DialogHeader><DialogTitle>{{ isEditing ? t('admin.postCategories.modal.editTitle') : t('admin.postCategories.modal.createTitle') }}</DialogTitle></DialogHeader>
         <form class="space-y-6" @submit.prevent="!translating && submit()">
-          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
+          <TranslateContent :automatic-status="translationStatus" :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="border-b border-border">
             <div class="flex gap-2 overflow-x-auto pb-1 sm:gap-4">
               <button v-for="lang in languages" :key="lang.code" type="button" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium sm:px-4" :class="currentLang === lang.code ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'" @click="currentLang = lang.code">{{ lang.name }}</button>

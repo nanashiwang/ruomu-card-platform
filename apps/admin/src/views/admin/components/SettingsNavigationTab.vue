@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAutomaticTranslation } from '@/composables/useAutomaticTranslation'
 import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -121,10 +122,13 @@ const fetchNavConfig = async () => {
   }
 }
 
+const { prepare: prepareTranslations, status: translationStatus } = useAutomaticTranslation(() => form)
+
 const save = async () => {
-  if (translating.value) return
+  if (submitting.value || translating.value) return
   submitting.value = true
   try {
+    if (!await prepareTranslations()) return
     const payload = {
       key: 'nav_config',
       value: {
@@ -160,7 +164,7 @@ defineExpose({ save, submitting, translating })
 
 <template>
   <div v-if="loaded" class="space-y-6">
-    <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
+    <TranslateContent :automatic-status="translationStatus" :value="form" :disabled="submitting" @busy="translating = $event" />
     <!-- 内置导航项 -->
     <div class="rounded-xl border border-border bg-card">
       <div class="border-b border-border bg-muted/40 px-6 py-4">
