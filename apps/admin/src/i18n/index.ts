@@ -1,7 +1,9 @@
 import { createI18n } from 'vue-i18n'
+import { translationMessages } from './translation'
 
 const messages = {
   'zh-CN': {
+    translation: translationMessages['zh-CN'],
     common: {
       api: {
         responseMissing: '响应内容为空',
@@ -4270,6 +4272,7 @@ const messages = {
     },
   },
   'zh-TW': {
+    translation: translationMessages['zh-TW'],
     common: {
       api: {
         responseMissing: '回應內容為空',
@@ -8538,6 +8541,7 @@ const messages = {
     },
   },
   'en-US': {
+    translation: translationMessages['en-US'],
     common: {
       api: {
         responseMissing: 'Empty response',

@@ -159,3 +159,28 @@ func TestBootstrapBuiltinRoles(t *testing.T) {
 		t.Fatalf("expected readonly inherited role deny write")
 	}
 }
+
+func TestTranslationRoleBoundaries(t *testing.T) {
+	svc := setupAuthzServiceTest(t)
+	if err := svc.BootstrapBuiltinRoles(); err != nil {
+		t.Fatal(err)
+	}
+	for i, role := range []string{"readonly_auditor", "operations", "integration", "system_admin", "support", "finance"} {
+		id := uint(100 + i)
+		if err := svc.SetAdminRoles(id, []string{role}); err != nil {
+			t.Fatal(err)
+		}
+		for _, check := range []struct {
+			path, method string
+			want         bool
+		}{
+			{"/admin/translations", "POST", role == "operations" || role == "integration" || role == "system_admin"},
+			{"/admin/settings/translation", "PUT", role == "system_admin"},
+		} {
+			got, err := svc.EnforceAdmin(id, check.path, check.method)
+			if err != nil || got != check.want {
+				t.Fatalf("%s %s %s: %v %v", role, check.path, check.method, got, err)
+			}
+		}
+	}
+}

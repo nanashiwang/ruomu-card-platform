@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -27,6 +28,7 @@ const categories = ref<AdminCategory[]>([])
 const currentLang = ref('zh-CN')
 const route = useRoute()
 const submitting = ref(false)
+const translating = ref(false)
 
 const languages = computed(() => [
   { code: 'zh-CN', name: t('admin.common.lang.zhCN') },
@@ -287,7 +289,8 @@ watch(
         <DialogHeader>
           <DialogTitle>{{ isEditing ? t('admin.categories.modal.editTitle') : t('admin.categories.modal.createTitle') }}</DialogTitle>
         </DialogHeader>
-        <form class="space-y-6" @submit.prevent="handleSubmit">
+        <form class="space-y-6" @submit.prevent="!translating && handleSubmit()">
+          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="border-b border-border">
             <div class="flex gap-2 overflow-x-auto pb-1 sm:gap-4">
               <button
@@ -349,7 +352,7 @@ watch(
 
           <div class="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" class="w-full sm:w-auto" @click="closeModal">{{ t('admin.common.cancel') }}</Button>
-            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting">{{ isEditing ? t('admin.categories.actions.saveChanges') : t('admin.categories.actions.createNow') }}</Button>
+            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting || translating">{{ isEditing ? t('admin.categories.actions.saveChanges') : t('admin.categories.actions.createNow') }}</Button>
           </div>
         </form>
       </DialogScrollContent>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>()
 
 const submitting = ref(false)
+const translating = ref(false)
 const loaded = ref(false)
 
 const form = reactive({
@@ -120,6 +122,7 @@ const fetchNavConfig = async () => {
 }
 
 const save = async () => {
+  if (translating.value) return
   submitting.value = true
   try {
     const payload = {
@@ -152,11 +155,12 @@ onMounted(() => {
   fetchNavConfig()
 })
 
-defineExpose({ save, submitting })
+defineExpose({ save, submitting, translating })
 </script>
 
 <template>
   <div v-if="loaded" class="space-y-6">
+    <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
     <!-- 内置导航项 -->
     <div class="rounded-xl border border-border bg-card">
       <div class="border-b border-border bg-muted/40 px-6 py-4">

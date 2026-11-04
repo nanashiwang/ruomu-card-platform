@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -46,6 +47,7 @@ const isEditing = ref(false)
 const currentTab = ref(route.params.type === 'notice' ? 'notice' : 'blog')
 const currentLang = ref('zh-CN')
 const submitting = ref(false)
+const translating = ref(false)
 
 watch(currentTab, (tab) => {
   pagination.page = 1
@@ -467,7 +469,8 @@ watch(
           <DialogTitle>{{ isEditing ? t('admin.posts.modal.editTitle') : t('admin.posts.modal.createTitle') }}</DialogTitle>
           <DialogDescription>{{ isEditing ? t('admin.posts.modal.editDescription') : t('admin.posts.modal.createDescription') }}</DialogDescription>
         </DialogHeader>
-        <form class="space-y-6" @submit.prevent="handleSubmit">
+        <form class="space-y-6" @submit.prevent="!translating && handleSubmit()">
+          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="border-b border-border">
             <div class="flex gap-4 overflow-x-auto pb-1">
               <button
@@ -625,7 +628,7 @@ watch(
 
           <div class="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" class="w-full sm:w-auto" @click="closeModal">{{ t('admin.common.cancel') }}</Button>
-            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting">
+            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting || translating">
               {{ isEditing ? t('admin.posts.actions.saveChanges') : t('admin.posts.actions.publishNow') }}
             </Button>
           </div>

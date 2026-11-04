@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 }>()
 
 const submitting = ref(false)
+const translating = ref(false)
 const loaded = ref(false)
 
 const createLocalizedField = (): Record<SupportedLanguage, string> => ({
@@ -89,6 +91,7 @@ const fetchAnnouncement = async () => {
 }
 
 const save = async () => {
+  if (translating.value) return
   submitting.value = true
   try {
     const content = createLocalizedField()
@@ -116,11 +119,12 @@ onMounted(() => {
   fetchAnnouncement()
 })
 
-defineExpose({ save, submitting })
+defineExpose({ save, submitting, translating })
 </script>
 
 <template>
   <div v-if="loaded" class="space-y-6">
+    <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
     <div class="rounded-xl border border-border bg-card">
       <div class="border-b border-border bg-muted/40 px-6 py-4">
         <h2 class="text-lg font-semibold">{{ t('admin.settings.homeAnnouncement.title') }}</h2>

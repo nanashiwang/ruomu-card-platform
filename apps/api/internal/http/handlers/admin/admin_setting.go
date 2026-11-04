@@ -5,6 +5,7 @@ import (
 	"github.com/dujiao-next/internal/constants"
 	"github.com/dujiao-next/internal/http/handlers/shared"
 	"github.com/dujiao-next/internal/http/response"
+	"github.com/dujiao-next/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +16,10 @@ import (
 func (h *Handler) GetSettings(c *gin.Context) {
 	key := c.DefaultQuery("key", constants.SettingKeySiteConfig)
 
+	if key == service.TranslationSettingKey {
+		response.Forbidden(c, "请使用独立的翻译配置接口")
+		return
+	}
 	value, err := h.SettingService.GetByKey(key)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
@@ -42,6 +47,10 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
+	if req.Key == service.TranslationSettingKey {
+		response.Forbidden(c, "请使用独立的翻译配置接口")
+		return
+	}
 	value, err := h.SettingService.Update(req.Key, req.Value)
 	if err != nil {
 		shared.RespondError(c, response.CodeInternal, "error.settings_save_failed", err)

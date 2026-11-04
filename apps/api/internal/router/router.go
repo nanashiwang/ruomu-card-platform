@@ -348,6 +348,9 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.DELETE("/categories/:id", adminHandler.DeleteCategory)
 
 				// 设置管理
+				authorized.GET("/settings/translation", adminHandler.GetTranslationSettings)
+				authorized.PUT("/settings/translation", adminHandler.UpdateTranslationSettings)
+				authorized.POST("/translations", adminHandler.TranslateContent)
 				authorized.GET("/settings", adminHandler.GetSettings)
 				authorized.PUT("/settings", adminHandler.UpdateSettings)
 				authorized.GET("/settings/smtp", adminHandler.GetSMTPSettings)

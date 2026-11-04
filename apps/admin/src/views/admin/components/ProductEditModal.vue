@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 const submitting = ref(false)
+const translating = ref(false)
 const isEditing = ref(false)
 const paymentChannels = ref<AdminPaymentChannel[]>([])
 const editingIsMapped = ref(false)
@@ -720,7 +722,8 @@ watch(
       <DialogHeader>
         <DialogTitle>{{ isEditing ? t('admin.products.modal.editTitle') : t('admin.products.modal.createTitle') }}</DialogTitle>
       </DialogHeader>
-      <form class="space-y-6" @submit.prevent="handleSubmit">
+      <form class="space-y-6" @submit.prevent="!translating && handleSubmit()">
+          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
         <div class="border-b border-border">
           <div class="flex gap-2 overflow-x-auto pb-1 sm:gap-4">
             <button
@@ -1128,7 +1131,7 @@ watch(
 
         <div class="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" class="w-full sm:w-auto" @click="closeModal">{{ t('admin.common.cancel') }}</Button>
-          <Button type="submit" class="w-full sm:w-auto" :disabled="submitting">
+          <Button type="submit" class="w-full sm:w-auto" :disabled="submitting || translating">
             {{ submitting ? t('admin.products.actions.submitting') : isEditing ? t('admin.products.actions.saveChanges') : t('admin.products.actions.createNow') }}
           </Button>
         </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -33,6 +34,7 @@ const pagination = ref({
 
 const showModal = ref(false)
 const submitting = ref(false)
+const translating = ref(false)
 const error = ref('')
 const isEditing = ref(false)
 const editingId = ref<number | null>(null)
@@ -327,7 +329,8 @@ onMounted(() => {
             {{ isEditing ? t('admin.memberLevels.form.editTitle') : t('admin.memberLevels.form.createTitle') }}
           </DialogTitle>
         </DialogHeader>
-        <form class="space-y-4" @submit.prevent="handleSubmit">
+        <form class="space-y-4" @submit.prevent="!translating && handleSubmit()">
+          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <!-- Multi-locale name -->
             <div class="md:col-span-2">
@@ -437,7 +440,7 @@ onMounted(() => {
 
           <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" class="w-full sm:w-auto" @click="closeModal">{{ t('admin.common.cancel') }}</Button>
-            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting">{{ t('admin.common.save') }}</Button>
+            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting || translating">{{ t('admin.common.save') }}</Button>
           </div>
         </form>
       </DialogScrollContent>

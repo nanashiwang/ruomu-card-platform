@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
+import SettingsTranslationTab from './components/SettingsTranslationTab.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -24,6 +26,8 @@ import SettingsUpstreamSyncTab from './components/SettingsUpstreamSyncTab.vue'
 
 const { t } = useI18n()
 const loading = ref(false)
+const translating = ref(false)
+const translationTabRef = ref<InstanceType<typeof SettingsTranslationTab>>()
 const smtpTabRef = ref<InstanceType<typeof SettingsSMTPTab>>()
 const captchaTabRef = ref<InstanceType<typeof SettingsCaptchaTab>>()
 const orderEmailTemplateTabRef = ref<InstanceType<typeof SettingsOrderEmailTemplateTab>>()
@@ -69,6 +73,7 @@ const languages = computed(() => [
 ])
 
 const tabs = computed(() => [
+  { label: t('translation.title'), value: 'translation' },
   { label: t('admin.settings.tabs.basic'), value: 'basic' },
   { label: t('admin.settings.tabs.template'), value: 'template' },
   { label: t('admin.settings.tabs.navigation'), value: 'navigation' },
@@ -718,6 +723,8 @@ const saveDashboardSettings = async () => {
 }
 
 const saveSettings = async () => {
+  if (translating.value) return
+  if (currentTab.value === 'translation') { await translationTabRef.value?.save(); return }
   if (currentTab.value === 'smtp') {
     await smtpTabRef.value?.save()
     return
@@ -785,17 +792,21 @@ onMounted(() => {
             {{ lang.name }}
           </button>
         </div>
-        <Button size="sm" class="w-full sm:w-auto" :disabled="loading || smtpTabRef?.submitting || smtpTabRef?.smtpTesting || captchaTabRef?.submitting || orderEmailTemplateTabRef?.submitting || navigationTabRef?.submitting || homeAnnouncementTabRef?.submitting || upstreamSyncTabRef?.submitting" @click="saveSettings">
+        <Button size="sm" class="w-full sm:w-auto" :disabled="translating || translationTabRef?.submitting || navigationTabRef?.translating || homeAnnouncementTabRef?.translating || orderEmailTemplateTabRef?.translating || loading || smtpTabRef?.submitting || smtpTabRef?.smtpTesting || captchaTabRef?.submitting || orderEmailTemplateTabRef?.submitting || navigationTabRef?.submitting || homeAnnouncementTabRef?.submitting || upstreamSyncTabRef?.submitting" @click="saveSettings">
           <span v-if="loading" class="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary"></span>
           {{ loading ? t('admin.settings.actions.saving') : t('admin.settings.actions.save') }}
         </Button>
       </div>
     </div>
 
+    <TranslateContent v-if="['basic', 'about', 'legal'].includes(currentTab)" :value="currentTab === 'basic' ? { brand: form.brand, seo: form.seo } : currentTab === 'about' ? form.about : form.legal" :disabled="loading" @busy="translating = $event" />
+
     <Tabs v-model="currentTab" class="flex flex-col gap-6">
       <TabsList class="h-auto flex-wrap gap-1">
         <TabsTrigger v-for="tab in tabs" :key="tab.value" :value="tab.value">{{ tab.label }}</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="translation"><SettingsTranslationTab ref="translationTabRef" /></TabsContent>
 
       <TabsContent value="basic" :forceMount="true" v-show="currentTab === 'basic'" class="space-y-6 mt-0">
       <div class="rounded-xl border border-border bg-card">

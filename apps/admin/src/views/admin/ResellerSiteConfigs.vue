@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
@@ -76,6 +77,7 @@ const route = useRoute()
 const loading = ref(true)
 const { refreshing, refreshList } = useListRefresh()
 const saving = ref(false)
+const translating = ref(false)
 const operatingId = ref<number | null>(null)
 const rows = ref<AdminResellerSiteConfig[]>([])
 const selectedRow = ref<AdminResellerSiteConfig | null>(null)
@@ -303,6 +305,7 @@ const removeFooterLink = (index: number) => {
 }
 
 const saveConfig = async () => {
+  if (translating.value) return
   if (!selectedRow.value) return
   saving.value = true
   try {
@@ -450,6 +453,7 @@ onMounted(() => {
           <DialogTitle>{{ t('admin.resellerSiteConfigs.editor.title', { id: selectedRow?.reseller_id || '-' }) }}</DialogTitle>
         </DialogHeader>
 
+        <TranslateContent :value="form" :disabled="saving" @busy="translating = $event" />
         <Tabs v-model="activeTab" class="mt-2">
           <TabsList class="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/40 p-1">
             <TabsTrigger value="brand" class="flex-none">{{ t('admin.resellerSiteConfigs.editor.sections.brand') }}</TabsTrigger>
@@ -597,7 +601,7 @@ onMounted(() => {
           <Button variant="outline" :disabled="saving" @click="showEditor = false">
             {{ t('admin.common.cancel') }}
           </Button>
-          <Button :disabled="saving" @click="saveConfig">
+          <Button :disabled="saving || translating" @click="saveConfig">
             {{ saving ? t('admin.resellerSiteConfigs.actions.saving') : t('admin.resellerSiteConfigs.actions.save') }}
           </Button>
         </div>

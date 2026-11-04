@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TranslateContent from '@/components/admin/TranslateContent.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useRoute } from 'vue-router'
@@ -25,6 +26,7 @@ const { t } = useI18n()
 const route = useRoute()
 const loading = ref(false)
 const submitting = ref(false)
+const translating = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
 const currentLang = ref('zh-CN')
@@ -407,7 +409,8 @@ watch(
           <DialogTitle>{{ isEditing ? t('admin.banners.modal.editTitle') : t('admin.banners.modal.createTitle') }}</DialogTitle>
         </DialogHeader>
 
-        <form class="space-y-6" @submit.prevent="handleSubmit">
+        <form class="space-y-6" @submit.prevent="!translating && handleSubmit()">
+          <TranslateContent :value="form" :disabled="submitting" @busy="translating = $event" />
           <div class="border-b border-border">
             <div class="flex gap-4 overflow-x-auto pb-1">
               <button
@@ -508,7 +511,7 @@ watch(
 
           <div class="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" class="w-full sm:w-auto" @click="closeModal">{{ t('admin.common.cancel') }}</Button>
-            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting">{{ isEditing ? t('admin.banners.actions.saveChanges') : t('admin.banners.actions.createNow') }}</Button>
+            <Button type="submit" class="w-full sm:w-auto" :disabled="submitting || translating">{{ isEditing ? t('admin.banners.actions.saveChanges') : t('admin.banners.actions.createNow') }}</Button>
           </div>
         </form>
       </DialogScrollContent>

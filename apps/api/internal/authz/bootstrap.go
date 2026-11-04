@@ -30,6 +30,7 @@ func BuiltinRoleSeeds() []RoleSeed {
 			Role:     "operations",
 			Inherits: []string{"readonly_auditor"},
 			Policies: []Policy{
+				{Object: "/admin/translations", Action: "POST"},
 				{Object: "/admin/products", Action: "*"},
 				{Object: "/admin/products/:id", Action: "*"},
 				{Object: "/admin/products/:id/wholesale-prices", Action: "PATCH"},
@@ -118,6 +119,7 @@ func BuiltinRoleSeeds() []RoleSeed {
 			Role:     "integration",
 			Inherits: []string{"readonly_auditor"},
 			Policies: []Policy{
+				{Object: "/admin/translations", Action: "POST"},
 				{Object: "/admin/site-connections", Action: "*"},
 				{Object: "/admin/site-connections/:id", Action: "*"},
 				{Object: "/admin/site-connections/:id/ping", Action: "POST"},
@@ -206,6 +208,8 @@ func BuiltinRoleSeeds() []RoleSeed {
 			Inherits: []string{"readonly_auditor"},
 			Policies: []Policy{
 				// 系统设置
+				{Object: "/admin/settings/translation", Action: "*"},
+				{Object: "/admin/translations", Action: "POST"},
 				{Object: "/admin/settings", Action: "*"},
 				{Object: "/admin/settings/smtp", Action: "*"},
 				{Object: "/admin/settings/smtp/test", Action: "POST"},
