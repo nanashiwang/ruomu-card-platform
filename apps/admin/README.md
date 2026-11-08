@@ -32,4 +32,4 @@ npm run build
 
 ## Online Documentation
 
-- https://rm.meta-api.vip:8443
+- https://rcard.cc/admin/login

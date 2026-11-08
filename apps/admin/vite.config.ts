@@ -25,10 +25,11 @@ const adminBaseInjector = () => ({
 })
 
 const isFullstack = process.env.VITE_FULLSTACK === '1'
+const configuredBase = process.env.VITE_ADMIN_BASE || (isFullstack ? './' : '/')
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: isFullstack ? './' : '/',
+  base: configuredBase,
   plugins: [
     vue(),
     cfAsyncModuleScriptPlugin(),

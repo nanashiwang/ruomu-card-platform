@@ -11,6 +11,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+ARG VITE_ADMIN_BASE=/
+ENV VITE_ADMIN_BASE=$VITE_ADMIN_BASE
 RUN pnpm run build
 
 FROM nginx:1.27-alpine

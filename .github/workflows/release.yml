@@ -96,7 +96,9 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: ghcr.io/nanashiwang/ruomu-admin:${{ github.sha }}
-          build-args: RUOMU_REVISION=${{ github.sha }}
+          build-args: |
+            RUOMU_REVISION=${{ github.sha }}
+            VITE_ADMIN_BASE=/admin/
           cache-from: type=gha,scope=ruomu-admin
           cache-to: type=gha,scope=ruomu-admin,mode=max
       - name: 验证实际镜像标签和打包边界
