@@ -149,10 +149,30 @@ def probe_routes(edge, connect_ip=None, https_port=443, ca_file=None):
     if status != "200" or json.loads(body).get("status") != "ok":
         raise CheckError("API 健康检查失败")
     for url in (edge["ALIPAY_RETURN_URL"] + "?alipay_return=1&order_no=RUOMU-PROBE",
-                f"https://{edge['ADMIN_DOMAIN']}/login"):
+                f"https://{edge['USER_DOMAIN']}/admin/login"):
         body, status, content_type = request(url)
         if status != "200" or "text/html" not in content_type or 'id="app"' not in body:
             raise CheckError("用户 /pay 或管理站页面未到达 SPA")
+    # Catch a wrong upstream or rewrite returning SPA HTML for JavaScript assets.
+    admin_url = f"https://{edge['USER_DOMAIN']}/admin"
+    _, status, _ = request(admin_url + "?probe=1")
+    if status != "308":
+        raise CheckError("后台 /admin 未规范化到 /admin/")
+    for path in ("/admin/", "/admin/login", "/admin/products"):
+        body, status, content_type = request(f"https://{edge['USER_DOMAIN']}{path}")
+        if status != "200" or "管理后台" not in body or "text/html" not in content_type:
+            raise CheckError("后台子路径未到达管理 SPA")
+    assets = re.findall(r'(?:src|href)="(/admin/assets/[^"?]+\.(?:js|css))"', body)
+    if not assets:
+        raise CheckError("后台产物缺少 /admin/assets/ 静态资源")
+    for asset in assets:
+        asset_body, status, content_type = request(f"https://{edge['USER_DOMAIN']}{asset}?probe=1")
+        if status != "200" or "text/html" in content_type or "<!doctype" in asset_body.lower():
+            raise CheckError("后台静态资源被 SPA HTML 替代")
+    for path in ("/login", "/admin/login"):
+        _, status, _ = request(f"https://{edge['ADMIN_DOMAIN']}{path}")
+        if status != "308":
+            raise CheckError("后台旧子域名未重定向到主域名")
     print("HTTPS 路由通过：三域名回调均到达支付宝处理器（200 / fail）；/pay、管理站和 API 健康检查通过。")
     print("该探针只证明可达，不代表商户签约、渠道参数或真实交易已验证。")
 

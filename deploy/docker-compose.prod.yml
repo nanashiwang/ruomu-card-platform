@@ -126,6 +126,8 @@ services:
         max-file: "3"
     build:
       context: ../apps/admin
+      args:
+        VITE_ADMIN_BASE: /admin/
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
