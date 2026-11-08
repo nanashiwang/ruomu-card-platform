@@ -88,6 +88,165 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(set(own), set(r.COMPONENTS))
         self.assertEqual(others['/api'][0], 'other')
 
+    def test_inventory_can_model_only_the_fully_uninstalled_state(self):
+        with patch.object(r, 'containers', return_value=[]):
+            own, others = r.inventory(require_running=False, allow_missing=True)
+        self.assertEqual(own, {})
+        self.assertEqual(others, {})
+        with patch.object(r, 'containers', return_value=[container('api', 'api')]):
+            with self.assertRaises(r.ReleaseError):
+                r.inventory(require_running=False, allow_missing=True)
+
+    def test_shortcut_names_dispatch_to_lifecycle_subcommands(self):
+        cases = {
+            'rcard-update': ('update', ['a' * 40]),
+            'rcard-stop': ('stop', []),
+            'rcard-start': ('start', []),
+            'rcard-restart': ('restart', []),
+            'rcard-reopen': ('restart', []),
+            'rcard-uninstall': ('uninstall', ['--confirm']),
+        }
+        for name, (command, args) in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(r.normalize_shortcut(args, name), [command, *args])
+
+    def test_stop_only_stops_application_services(self):
+        path = Path('/opt/ruomu-card-platform/deploy/compose.yml')
+        owned = {name: container(name, name) for name in r.COMPONENTS}
+        stopped = {name: container(name, name, running=False) for name in r.COMPONENTS}
+        for item in stopped.values():
+            item['State']['ExitCode'] = 0
+        with patch.object(r, 'lifecycle_context', return_value=(path, {}, owned, {})), \
+             patch.object(r, 'compose') as compose_call, \
+             patch.object(r, 'inventory', return_value=(stopped, {})), \
+             patch.object(r, 'verify_other_containers'):
+            r.stop_services()
+        compose_call.assert_called_once_with(path, 'stop', '--timeout', '45', *r.COMPONENTS)
+
+    def test_start_uses_saved_compose_without_starting_dependencies(self):
+        path = Path('/opt/ruomu-card-platform/deploy/compose.yml')
+        config = {'services': {'api': {'depends_on': {}}}}
+        with patch.object(r, 'lifecycle_context', return_value=(path, config, {}, {})) as context, \
+             patch.object(r, 'check_dependencies') as dependencies, \
+             patch.object(r, 'compose') as compose_call, \
+             patch.object(r, 'wait_health') as wait_health, \
+             patch.object(r, 'verify_other_containers'):
+            r.start_services()
+        context.assert_called_once_with(allow_uninstalled=True)
+        dependencies.assert_called_once_with(config)
+        compose_call.assert_called_once_with(path, 'up', '-d', '--no-build', '--pull', 'never', '--no-deps', *r.COMPONENTS)
+        wait_health.assert_called_once_with()
+
+    def test_start_after_uninstall_requires_saved_existing_volumes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            store = root / 'store'
+            backups = root / 'backups'
+            store.mkdir()
+            backups.mkdir()
+            compose_path = store / REV / 'compose.json'
+            compose_path.parent.mkdir()
+            runtime_id = 'sha256:' + 'c' * 64
+            config = {'name': r.PROJECT, 'services': {
+                name: {'image': runtime_id} for name in r.COMPONENTS}}
+            compose_path.write_text(json.dumps(config))
+            state_path = store / 'current.json'
+            state_path.write_text(json.dumps({
+                'revision': REV,
+                'compose': str(compose_path),
+                'components': {name: {'runtime_id': runtime_id} for name in r.COMPONENTS},
+                'preserved_volumes': ['ruomu-db'],
+            }))
+            with patch.object(r, 'STORE', store), patch.object(r, 'BACKUPS', backups), \
+                 patch.object(r, 'STATE', state_path), patch.object(r, 'containers', return_value=[]), \
+                 patch.object(r, 'compose', return_value=subprocess.CompletedProcess([], 0, json.dumps(config), '')), \
+                 patch.object(r, 'run', return_value=subprocess.CompletedProcess([], 0, '[]', '')) as run:
+                path, restored, owned, others = r.lifecycle_context(allow_uninstalled=True)
+            self.assertEqual(path, compose_path)
+            self.assertEqual(restored, config)
+            self.assertEqual(owned, {})
+            self.assertEqual(others, {})
+            run.assert_called_once_with('docker', 'volume', 'inspect', 'ruomu-db')
+
+    def test_start_after_uninstall_refuses_missing_volume_inventory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            store = root / 'store'
+            backups = root / 'backups'
+            store.mkdir()
+            backups.mkdir()
+            compose_path = store / REV / 'compose.json'
+            compose_path.parent.mkdir()
+            runtime_id = 'sha256:' + 'c' * 64
+            config = {'name': r.PROJECT, 'services': {
+                name: {'image': runtime_id} for name in r.COMPONENTS}}
+            compose_path.write_text(json.dumps(config))
+            state_path = store / 'current.json'
+            state_path.write_text(json.dumps({
+                'revision': REV,
+                'compose': str(compose_path),
+                'components': {name: {'runtime_id': runtime_id} for name in r.COMPONENTS},
+                'preserved_volumes': [],
+            }))
+            with patch.object(r, 'STORE', store), patch.object(r, 'BACKUPS', backups), \
+                 patch.object(r, 'STATE', state_path), patch.object(r, 'containers', return_value=[]), \
+                 patch.object(r, 'compose', return_value=subprocess.CompletedProcess([], 0, json.dumps(config), '')):
+                with self.assertRaisesRegex(r.ReleaseError, 'preserved-volume inventory'):
+                    r.lifecycle_context(allow_uninstalled=True)
+
+    def test_restart_only_restarts_application_services(self):
+        path = Path('/opt/ruomu-card-platform/deploy/compose.yml')
+        config = {'services': {'api': {'depends_on': {}}}}
+        owned = {name: container(name, name) for name in r.COMPONENTS}
+        with patch.object(r, 'lifecycle_context', return_value=(path, config, owned, {})), \
+             patch.object(r, 'check_dependencies'), patch.object(r, 'compose') as compose_call, \
+             patch.object(r, 'wait_health'), patch.object(r, 'verify_other_containers'):
+            r.restart_services()
+        compose_call.assert_called_once_with(path, 'restart', '--timeout', '45', *r.COMPONENTS)
+
+    def test_lifecycle_start_requires_healthy_shared_dependencies(self):
+        redis = container('redis', 'redis')
+        redis['State']['Health'] = {'Status': 'healthy'}
+        config = {'services': {'api': {'depends_on': {'redis': {'condition': 'service_healthy'}}}, 'redis': {}}}
+        with patch.object(r, 'containers', return_value=[redis]):
+            r.check_dependencies(config)
+        redis['State']['Health']['Status'] = 'starting'
+        with patch.object(r, 'containers', return_value=[redis]):
+            with self.assertRaisesRegex(r.ReleaseError, 'not healthy'):
+                r.check_dependencies(config)
+
+    def test_uninstall_removes_only_app_containers_without_volume_flags(self):
+        path = Path('/opt/ruomu-card-platform/deploy/compose.yml')
+        owned = {name: container(name, name) for name in r.COMPONENTS}
+        owned['api']['Mounts'] = [{'Type': 'volume', 'Name': 'ruomu-db', 'Destination': '/app/db'}]
+        stopped = {name: container(name, name, running=False) for name in r.COMPONENTS}
+        for item in stopped.values():
+            item['State']['ExitCode'] = 0
+        state = {'compose': str(path), 'revision': REV, 'components': {name: {'runtime_id': 'sha256:' + 'c' * 64} for name in r.COMPONENTS}}
+        with patch.object(r, 'lifecycle_context', return_value=(path, {}, owned, {})), \
+             patch.object(r, 'STATE') as state_path, \
+             patch.object(r, 'json') as json_module, \
+             patch.object(r, 'save') as save_state, \
+             patch.object(r, 'run') as run, \
+             patch.object(r, 'compose') as compose_call, \
+             patch.object(r, 'inventory', side_effect=[(stopped, {}), ({}, {})]), \
+             patch.object(r, 'verify_other_containers'):
+            state_path.is_file.return_value = True
+            state_path.read_text.return_value = 'state'
+            json_module.loads.return_value = state
+            r.uninstall_services()
+        self.assertEqual(compose_call.call_args_list[0].args, (path, 'stop', '--timeout', '45', *r.COMPONENTS))
+        self.assertEqual(compose_call.call_args_list[1].args, (path, 'rm', '--force', *r.COMPONENTS))
+        self.assertFalse(any('-v' in call.args or 'down' in call.args for call in compose_call.call_args_list))
+        run.assert_any_call('docker', 'volume', 'inspect', 'ruomu-db')
+        save_state.assert_called_once_with(state_path, {**state, 'preserved_volumes': ['ruomu-db']})
+
+    def test_uninstall_shortcut_requires_explicit_confirmation(self):
+        with patch.object(r.sys, 'argv', ['rcard-uninstall']):
+            with self.assertRaises(SystemExit) as caught:
+                r.main([])
+        self.assertEqual(caught.exception.code, 2)
+
     def test_failed_container_is_visible_for_recovery_but_blocks_preflight(self):
         objects = [container(n, n, n != 'api') for n in r.COMPONENTS]
         with patch.object(r, 'containers', return_value=objects):

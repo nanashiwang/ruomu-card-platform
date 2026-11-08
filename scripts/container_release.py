@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Pinned three-image release. Existing Compose layout/data stay on this host.
+"""Pinned three-image release and lifecycle controls. Compose state/data stay on this host.
 
 Initial adoption requires matching source and config hashes. Only sqlite with a
 named /app/db volume is supported. Unknown layouts fail before service mutation.
+Service commands target api/user/admin only and never remove volumes or images.
 """
 from __future__ import annotations
 import argparse
@@ -173,7 +174,7 @@ def containers():
     ids = run('docker', 'ps', '-aq').stdout.split()
     return json.loads(run('docker', 'inspect', *ids).stdout) if ids else []
 
-def inventory(*, require_running=True):
+def inventory(*, require_running=True, allow_missing=False):
     owned, others = {}, {}
     for item in containers():
         labels = item.get('Config', {}).get('Labels') or {}
@@ -183,7 +184,10 @@ def inventory(*, require_running=True):
             owned[service] = item
         else:
             others[item['Name']] = (item['Id'], item['State']['StartedAt'], item['State']['Status'])
-    need(set(owned) == set(COMPONENTS), 'Expected current api/user/admin containers')
+    if allow_missing:
+        need(not owned or set(owned) == set(COMPONENTS), 'Partial application container set; reconcile before service operation')
+    else:
+        need(set(owned) == set(COMPONENTS), 'Expected current api/user/admin containers')
     return owned, others
 
 def clean_env():
@@ -323,6 +327,137 @@ def health(owned):
     for name, item in owned.items():
         port = 8080 if name == 'api' else 80
         run('docker', 'exec', item['Id'], 'wget', '-q', '-O', '/dev/null', f'http://127.0.0.1:{port}/health', timeout=15)
+
+
+def lifecycle_context(*, allow_uninstalled=False):
+    owned, others = inventory(require_running=False, allow_missing=allow_uninstalled)
+    if owned:
+        config = read_config(owned)
+        config_paths = {item['Config']['Labels'].get('com.docker.compose.project.config_files', '') for item in owned.values()}
+        need(len(config_paths) == 1 and len(next(iter(config_paths)).split(',')) == 1,
+             'Multiple Compose files require explicit review')
+        path = safe_path(Path(next(iter(config_paths))))
+        return path, config, owned, others
+
+    need(allow_uninstalled and STATE.is_file(), 'No managed application containers or saved release state')
+    state = json.loads(STATE.read_text())
+    need(re.fullmatch(SHA, state.get('revision', '')) is not None, 'Invalid saved release revision')
+    components = state.get('components')
+    need(isinstance(components, dict) and set(components) == set(COMPONENTS), 'Invalid saved release components')
+    for name in COMPONENTS:
+        need(re.fullmatch(DIGEST, components[name].get('runtime_id', '')) is not None,
+             f'{name}: invalid saved image identity')
+    preserved_volumes = state.get('preserved_volumes')
+    need(isinstance(preserved_volumes, list) and preserved_volumes,
+         'No preserved-volume inventory; refusing to recreate containers with potentially empty data volumes')
+    for volume in preserved_volumes:
+        need(isinstance(volume, str) and volume and '/' not in volume,
+             'Invalid preserved volume name')
+        run('docker', 'volume', 'inspect', volume)
+    path = safe_path(Path(state.get('compose', '')))
+    need(path.is_file() and (path.is_relative_to(STORE) or path.is_relative_to(BACKUPS)),
+         'Saved Compose configuration is missing or outside protected release storage')
+    config = decoded_compose_config(compose(path, 'config', '--format', 'json').stdout)
+    need(config.get('name') == PROJECT and set(COMPONENTS).issubset(config.get('services', {})),
+         'Saved Compose configuration does not describe this application')
+    for name in COMPONENTS:
+        service = config['services'][name]
+        need(service.get('image') == components[name]['runtime_id'] and not service.get('build'),
+             f'{name}: saved Compose image differs from current release')
+    return path, config, owned, others
+
+
+def check_dependencies(config):
+    all_containers = containers()
+    by_service = {}
+    for item in all_containers:
+        labels = item.get('Config', {}).get('Labels') or {}
+        if labels.get('com.docker.compose.project') == PROJECT:
+            by_service.setdefault(labels.get('com.docker.compose.service'), []).append(item)
+    for name in COMPONENTS:
+        dependencies = config.get('services', {}).get(name, {}).get('depends_on') or {}
+        if isinstance(dependencies, list):
+            dependencies = {dependency: {} for dependency in dependencies}
+        for dependency, options in dependencies.items():
+            if dependency in COMPONENTS or dependency not in config.get('services', {}):
+                continue
+            matches = by_service.get(dependency, [])
+            need(len(matches) == 1 and matches[0]['State']['Running'],
+                 f'{dependency} dependency must already be running; this operation never starts shared services')
+            health_state = (matches[0]['State'].get('Health') or {}).get('Status')
+            condition = options.get('condition', 'service_started') if isinstance(options, dict) else 'service_started'
+            if condition == 'service_healthy' or health_state is not None:
+                need(health_state == 'healthy', f'{dependency} dependency is not healthy')
+
+
+def verify_other_containers(before):
+    _, after = inventory(require_running=False, allow_missing=True)
+    need(after == before, 'A non-application container changed during service operation')
+
+
+def stop_services():
+    path, _, owned, others = lifecycle_context()
+    print('STEP: gracefully stopping api, user and admin only', flush=True)
+    compose(path, 'stop', '--timeout', '45', *COMPONENTS)
+    stopped, _ = inventory(require_running=False)
+    for name, item in stopped.items():
+        need(not item['State']['Running'] and item['State'].get('ExitCode') == 0,
+             f'{name} did not stop gracefully')
+    need(set(stopped) == set(owned), 'Application container set changed while stopping')
+    verify_other_containers(others)
+    print('STOP_SUCCESS: api, user and admin stopped; Redis, Nginx, data and images retained', flush=True)
+
+
+def start_services():
+    path, config, _, others = lifecycle_context(allow_uninstalled=True)
+    check_dependencies(config)
+    print('STEP: starting api, user and admin without starting dependencies', flush=True)
+    compose(path, 'up', '-d', '--no-build', '--pull', 'never', '--no-deps', *COMPONENTS)
+    started = wait_health()
+    verify_other_containers(others)
+    print('START_SUCCESS: api, user and admin healthy; data and shared services retained', flush=True)
+    return started
+
+
+def restart_services():
+    path, config, _, others = lifecycle_context()
+    check_dependencies(config)
+    print('STEP: restarting api, user and admin only', flush=True)
+    compose(path, 'restart', '--timeout', '45', *COMPONENTS)
+    wait_health()
+    verify_other_containers(others)
+    print('RESTART_SUCCESS: api, user and admin healthy; data and shared services retained', flush=True)
+
+
+def uninstall_services():
+    path, _, owned, others = lifecycle_context()
+    need(STATE.is_file(), 'Uninstall requires a managed release record so the same containers can be restored')
+    state = json.loads(STATE.read_text())
+    need(state.get('compose') == str(path) and re.fullmatch(SHA, state.get('revision', '')) is not None,
+         'Live containers do not match the managed release state')
+    volumes = sorted({mount.get('Name') for item in owned.values() for mount in item.get('Mounts', [])
+                      if mount.get('Type') == 'volume' and mount.get('Name')})
+    need(any(mount.get('Type') == 'volume' and mount.get('Destination') == '/app/db'
+             for mount in owned['api'].get('Mounts', [])),
+         'Database is not on a named Docker volume; refusing uninstall')
+    need(volumes, 'No named data volumes found; refusing uninstall')
+    for volume in volumes:
+        run('docker', 'volume', 'inspect', volume)
+    print('STEP: stopping and removing api, user and admin containers only', flush=True)
+    compose(path, 'stop', '--timeout', '45', *COMPONENTS)
+    stopped, _ = inventory(require_running=False)
+    need(set(stopped) == set(owned), 'Application container set changed while uninstalling')
+    for name, item in stopped.items():
+        need(not item['State']['Running'] and item['State'].get('ExitCode') == 0,
+             f'{name} did not stop gracefully; containers were not removed')
+    compose(path, 'rm', '--force', *COMPONENTS)
+    remaining, _ = inventory(require_running=False, allow_missing=True)
+    need(not remaining, 'Application containers remain after uninstall')
+    for volume in volumes:
+        run('docker', 'volume', 'inspect', volume)
+    save(STATE, {**state, 'preserved_volumes': volumes})
+    verify_other_containers(others)
+    print('UNINSTALL_SUCCESS: application containers removed; volumes, images, backups, Redis and Nginx retained', flush=True)
 
 def protected_files(owned):
     paths = [ROOT / '.env', ROOT / 'deploy', Path('/etc/nginx')]
@@ -581,13 +716,40 @@ def rollback(folder):
         raise
     print('ROLLBACK_SUCCESS: previous programs restored; live database retained')
 
-def main():
+SHORTCUTS = {
+    'rcard-update': 'update',
+    'rcard-stop': 'stop',
+    'rcard-start': 'start',
+    'rcard-restart': 'restart',
+    'rcard-reopen': 'restart',
+    'rcard-uninstall': 'uninstall',
+}
+
+
+def normalize_shortcut(argv, invoked_as):
+    normalized = list(argv)
+    if invoked_as in SHORTCUTS:
+        normalized.insert(0, SHORTCUTS[invoked_as])
+    return normalized
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    invoked_as = Path(sys.argv[0]).name
+    argv = normalize_shortcut(argv, invoked_as)
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('preflight')
     sub.add_parser('deploy').add_argument('revision')
+    sub.add_parser('update').add_argument('revision')
     sub.add_parser('rollback').add_argument('directory', type=Path)
-    args = parser.parse_args()
+    for command in ('stop', 'start'):
+        sub.add_parser(command)
+    sub.add_parser('restart', aliases=['reopen'])
+    uninstall_parser = sub.add_parser('uninstall')
+    uninstall_parser.add_argument('--confirm', action='store_true', required=True,
+                                   help='confirm removal of api/user/admin containers; persistent data is kept')
+    args = parser.parse_args(argv)
     need(os.geteuid() == 0, 'Run as root')
     os.umask(0o077)
     for sig in (signal.SIGTERM, signal.SIGHUP):
@@ -595,8 +757,12 @@ def main():
     with open('/run/lock/ruomu-container-release.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.command == 'preflight': preflight()
-        elif args.command == 'deploy': deploy(args.revision)
-        else: rollback(args.directory)
+        elif args.command in ('deploy', 'update'): deploy(args.revision)
+        elif args.command == 'rollback': rollback(args.directory)
+        elif args.command == 'stop': stop_services()
+        elif args.command == 'start': start_services()
+        elif args.command in ('restart', 'reopen'): restart_services()
+        elif args.command == 'uninstall': uninstall_services()
 
 if __name__ == '__main__':
     try:
