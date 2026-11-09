@@ -72,6 +72,12 @@ const routes = [
         meta: { permission: 'GET:/admin/settings' },
       },
       {
+        path: 'invoices',
+        name: 'invoices',
+        component: () => import('@/views/admin/Invoices.vue'),
+        meta: { permission: 'GET:/admin/invoices' },
+      },
+      {
         path: 'order-refunds',
         name: 'order-refunds',
         component: () => import('@/views/admin/OrderRefunds.vue'),

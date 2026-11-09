@@ -74,6 +74,7 @@ type Container struct {
 	UserTOTPService               *service.UserTOTPService
 	UserAuthService               *service.UserAuthService
 	TelegramAuthService           *service.TelegramAuthService
+	InvoiceService                *service.InvoiceService
 	EmailService                  *service.EmailService
 	CaptchaService                *service.CaptchaService
 	UploadService                 *service.UploadService
@@ -275,6 +276,7 @@ func (c *Container) initServices() {
 	}
 
 	c.EmailService = service.NewEmailService(&c.Config.Email)
+	c.InvoiceService = service.NewInvoiceService(models.DB, c.EmailService)
 	c.CaptchaService = service.NewCaptchaService(c.SettingService, c.Config.Captcha)
 	c.AuthService = service.NewAuthService(c.Config, c.AdminRepo)
 	c.TOTPService = service.NewTOTPService(c.Config, c.AdminRepo, cache.Client())

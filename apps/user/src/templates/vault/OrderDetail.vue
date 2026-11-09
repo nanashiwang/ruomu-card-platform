@@ -46,6 +46,7 @@
         </div>
       </div>
 
+      <OrderInvoice :key="order.order_no" :order="order" class="mb-[18px]" />
       <VaultOrderBody
         :order="order"
         variant="user"
@@ -57,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import OrderInvoice from '@/components/OrderInvoice.vue'
 import { useI18n } from 'vue-i18n'
 import { AlertCircle } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'

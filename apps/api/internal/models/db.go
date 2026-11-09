@@ -137,6 +137,7 @@ func AutoMigrate() error {
 		&AdminLoginLog{},
 		&EmailVerifyCode{},
 		&Order{},
+		&OrderInvoice{},
 		&OrderItem{},
 		&OrderRefundRecord{},
 		&CartItem{},

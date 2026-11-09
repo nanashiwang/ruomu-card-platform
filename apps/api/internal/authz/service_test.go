@@ -210,3 +210,23 @@ func TestUserProductPriceRoleBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestInvoiceRolePermissions(t *testing.T) {
+	svc := setupAuthzServiceTest(t)
+	if err := svc.BootstrapBuiltinRoles(); err != nil {
+		t.Fatal(err)
+	}
+	for i, role := range []string{"finance", "system_admin", "readonly_auditor", "operations", "support"} {
+		id := uint(i + 100)
+		if err := svc.SetAdminRoles(id, []string{role}); err != nil {
+			t.Fatal(err)
+		}
+		for _, action := range []string{"review", "file", "send"} {
+			allow, err := svc.EnforceAdmin(id, "/admin/invoices/42/"+action, "POST")
+			want := role == "finance"
+			if err != nil || allow != want {
+				t.Fatalf("role=%s action=%s allow=%v err=%v", role, action, allow, err)
+			}
+		}
+	}
+}

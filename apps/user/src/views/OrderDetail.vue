@@ -79,6 +79,8 @@
           </div>
         </div>
 
+        <OrderInvoice :key="order.order_no" :order="order" />
+
         <div class="rounded-2xl border bg-card shadow-sm p-6">
           <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.amountTitle') }}</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -430,6 +432,7 @@
 </template>
 
 <script setup lang="ts">
+import OrderInvoice from '@/components/OrderInvoice.vue'
 import { Copy, Check, Download, Info } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
