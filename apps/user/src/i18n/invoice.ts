@@ -1,5 +1,7 @@
 export const invoiceMessages = {
   "zh-CN": {
+    "entry": "申请发票",
+    "entryHint": "选择订单即可申请发票、查看申请进度或下载电子发票。仅支持已付款且未退款的主订单。",
     "title": "订单发票",
     "management": "发票管理",
     "hint": "审核通过后由管理员上传电子发票，并发送至您填写的邮箱。",
@@ -50,6 +52,8 @@ export const invoiceMessages = {
     "refundHint": "若订单发生退款，请先核对票据处理情况；系统不自动冲红或重新开票。"
   },
   "zh-TW": {
+    "entry": "申請發票",
+    "entryHint": "選擇訂單即可申請發票、查看申請進度或下載電子發票。僅支援已付款且未退款的主訂單。",
     "title": "訂單發票",
     "management": "發票管理",
     "hint": "審核通過後由管理員上傳電子發票，並寄至您填寫的信箱。",
@@ -100,6 +104,8 @@ export const invoiceMessages = {
     "refundHint": "若訂單發生退款，請先核對票據處理情況；系統不自動沖紅或重新開票。"
   },
   "en-US": {
+    "entry": "Request invoice",
+    "entryHint": "Select an order to request an invoice, check its status or download it. Only paid, non-refunded parent orders are eligible.",
     "title": "Order invoice",
     "management": "Invoices",
     "hint": "After approval, an administrator uploads the invoice and emails it to your address.",

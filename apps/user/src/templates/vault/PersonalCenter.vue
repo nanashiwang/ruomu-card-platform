@@ -47,6 +47,13 @@
 
         <!-- 概览 -->
         <template v-if="currentSection === 'overview'">
+            <RouterLink to="/me/invoices" class="flex items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-5 transition-colors hover:bg-primary/10">
+              <div>
+                <h2 class="text-lg font-bold text-primary">{{ t('invoice.entry') }}</h2>
+                <p class="mt-1 text-sm text-muted-foreground">{{ t('invoice.entryHint') }}</p>
+              </div>
+              <span aria-hidden="true" class="text-2xl text-primary">→</span>
+            </RouterLink>
           <div class="grid gap-3.5 grid-cols-2 lg:grid-cols-4">
             <div class="flex items-center gap-3 rounded-lg border bg-card p-4">
               <div class="grid h-[42px] w-[42px] flex-none place-items-center rounded-xl bg-primary/10 text-primary"><ShoppingBag class="h-5 w-5" /></div>
@@ -170,7 +177,8 @@
         <div v-else class="min-w-0">
           <ProfilePanel v-if="currentSection === 'profile'" />
           <SecurityPanel v-else-if="currentSection === 'security'" />
-          <OrdersPanel v-else-if="currentSection === 'orders'" />
+          <OrdersPanel v-else-if="currentSection === 'orders'" key="orders" />
+          <OrdersPanel v-else-if="currentSection === 'invoices'" key="invoices" invoice-mode />
           <WalletPanel v-else-if="currentSection === 'wallet'" />
           <AffiliatePanel v-else-if="currentSection === 'affiliate'" />
           <div v-else-if="currentSection === 'reseller' && canAccessResellerConsole" class="rounded-xl border bg-card p-[22px]">

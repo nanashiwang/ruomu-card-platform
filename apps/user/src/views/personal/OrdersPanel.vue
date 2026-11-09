@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <PanelHeading :title="t('orders.title')" :description="t('orders.subtitle')" :icon="ShoppingBag">
+    <PanelHeading :title="t(invoiceMode ? 'invoice.entry' : 'orders.title')" :description="t(invoiceMode ? 'invoice.entryHint' : 'orders.subtitle')" :icon="ShoppingBag">
       <template #actions>
         <Badge variant="neutral" size="sm" class="rounded-full">
           {{ t('orders.pageInfo', { page: activePagination.page, total: activePagination.total_page }) }}
@@ -12,7 +12,7 @@
     </PanelHeading>
 
     <!-- Tab 切换 -->
-    <div class="flex rounded-xl border bg-card overflow-hidden">
+    <div v-if="!invoiceMode" class="flex rounded-xl border bg-card overflow-hidden">
       <button
         type="button"
         class="flex-1 py-3 text-sm font-semibold text-center transition-colors"
@@ -84,7 +84,11 @@
         </div>
       </div>
 
-      <div v-if="orderLoading" class="space-y-4">
+      <div v-if="orderError" role="alert" class="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
+        {{ orderError }}
+        <Button type="button" variant="outline" size="sm" class="ml-2" @click="refreshOrdersCurrentPage">{{ t('orders.filters.refresh') }}</Button>
+      </div>
+      <div v-else-if="orderLoading" class="space-y-4">
         <div v-for="i in 3" :key="i" class="h-24 animate-pulse rounded-2xl border bg-muted"></div>
       </div>
 
@@ -124,11 +128,13 @@
               <Button as-child variant="outline" size="sm">
                 <router-link :to="`/orders/${order.order_no}`">{{ t('orders.viewDetails') }}</router-link>
               </Button>
+              <Button v-if="invoiceMode" type="button" size="sm" @click="selectedOrder = selectedOrder === order.order_no ? '' : order.order_no">{{ t('invoice.entry') }}</Button>
               <Button v-if="order.status === 'pending_payment'" as-child size="sm">
                 <router-link :to="`/pay?order_no=${order.order_no}`">{{ t('orders.payNow') }}</router-link>
               </Button>
             </div>
           </div>
+          <OrderInvoice v-if="invoiceMode && selectedOrder === order.order_no" :key="order.order_no" :order="order" class="mt-4" />
         </div>
       </div>
 
@@ -262,6 +268,10 @@ import PaginationNav from '../../components/PaginationNav.vue'
 import PanelHeading from '../../components/shared/PanelHeading.vue'
 import StatCard from '../../components/shared/StatCard.vue'
 
+import OrderInvoice from '../../components/OrderInvoice.vue'
+
+withDefaults(defineProps<{ invoiceMode?: boolean }>(), { invoiceMode: false })
+const selectedOrder = ref('')
 const { t } = useI18n()
 
 
@@ -285,6 +295,7 @@ const activePagination = computed(() =>
 
 // ========== 普通订单 ==========
 const orderLoading = ref(true)
+const orderError = ref('')
 const orderLoaded = ref(false)
 const orders = ref<any[]>([])
 const orderPagination = ref({ page: 1, page_size: 20, total: 0, total_page: 1 })
@@ -321,6 +332,7 @@ const finishedCount = computed(
 
 const loadOrders = async (page = 1) => {
   orderLoading.value = true
+  orderError.value = ''
   try {
     const response = await userOrderAPI.list({
       page,
@@ -332,6 +344,7 @@ const loadOrders = async (page = 1) => {
     orderPagination.value = response.data.pagination || orderPagination.value
     orderLoaded.value = true
   } catch {
+    orderError.value = t('invoice.error')
     orders.value = []
   } finally {
     orderLoading.value = false
