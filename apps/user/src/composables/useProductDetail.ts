@@ -406,7 +406,7 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     slug: product.value.slug,
     title: product.value.title,
     priceAmount: String(sku?.price_amount || product.value.price_amount || '0.00'),
-    wholesalePrices: Array.isArray(product.value.wholesale_prices) ? product.value.wholesale_prices : undefined,
+    wholesalePrices: sku?.user_price ? [] : Array.isArray(product.value.wholesale_prices) ? product.value.wholesale_prices : undefined,
     image: images.value[0],
     minPurchaseQuantity: normalizeOptionalLimitNumber(product.value.min_purchase_quantity) ?? undefined,
     maxPurchaseQuantity: normalizeOptionalLimitNumber(product.value.max_purchase_quantity) ?? undefined,

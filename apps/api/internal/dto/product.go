@@ -8,6 +8,7 @@ import (
 
 // ProductResp 商品公共响应
 type ProductResp struct {
+	UserPrice            bool                 `json:"user_price,omitempty"`
 	ID                   uint                 `json:"id"`
 	CategoryID           uint                 `json:"category_id"`
 	Slug                 string               `json:"slug"`
@@ -83,6 +84,7 @@ func NewWholesalePriceRespList(tiers models.WholesalePriceTiers) []WholesalePric
 
 // SKUResp 商品 SKU 公共响应
 type SKUResp struct {
+	UserPrice           bool         `json:"user_price,omitempty"`
 	ID                  uint         `json:"id"`
 	SKUCode             string       `json:"sku_code"`
 	SpecValues          models.JSON  `json:"spec_values"`

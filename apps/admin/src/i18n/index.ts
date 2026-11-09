@@ -1,9 +1,11 @@
 import { createI18n } from 'vue-i18n'
+import { userPriceMessages } from './userPrices'
 import { translationMessages } from './translation'
 
 const messages = {
   'zh-CN': {
     translation: translationMessages['zh-CN'],
+    userPrices: userPriceMessages['zh-CN'],
     common: {
       api: {
         responseMissing: '响应内容为空',
@@ -4273,6 +4275,7 @@ const messages = {
   },
   'zh-TW': {
     translation: translationMessages['zh-TW'],
+    userPrices: userPriceMessages['zh-TW'],
     common: {
       api: {
         responseMissing: '回應內容為空',
@@ -8542,6 +8545,7 @@ const messages = {
   },
   'en-US': {
     translation: translationMessages['en-US'],
+    userPrices: userPriceMessages['en-US'],
     common: {
       api: {
         responseMissing: 'Empty response',

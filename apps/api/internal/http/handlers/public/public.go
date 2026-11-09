@@ -424,6 +424,7 @@ func (h *Handler) GetPublicMemberLevels(c *gin.Context) {
 
 // GetProducts 获取商品列表
 func (h *Handler) GetProducts(c *gin.Context) {
+	setUserProductCacheHeaders(c)
 	// 获取分页参数
 	page, pageSize := shared.ParsePagination(c)
 
@@ -471,6 +472,10 @@ func (h *Handler) GetProducts(c *gin.Context) {
 			shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", derr)
 			return
 		}
+		if err := h.applyUserProductPrices(c, &item, resolvePublicDisplaySKUID(&products[i])); err != nil {
+			shared.RespondError(c, response.CodeInternal, "error.product_fetch_failed", err)
+			return
+		}
 		decorated = append(decorated, item)
 	}
 
@@ -481,6 +486,7 @@ func (h *Handler) GetProducts(c *gin.Context) {
 
 // GetProductBySlug 根据 slug 获取商品详情
 func (h *Handler) GetProductBySlug(c *gin.Context) {
+	setUserProductCacheHeaders(c)
 	slug := c.Param("slug")
 	tenant := tenantFromRequest(c)
 
@@ -520,6 +526,9 @@ func (h *Handler) GetProductBySlug(c *gin.Context) {
 	}
 
 	decorated, derr := h.decoratePublicProductForTenant(product, promotionService, tenant, resellerBatch)
+	if derr == nil {
+		derr = h.applyUserProductPrices(c, &decorated, resolvePublicDisplaySKUID(product))
+	}
 	if derr != nil {
 		if errors.Is(derr, service.ErrResellerProductNotListed) {
 			shared.RespondError(c, response.CodeNotFound, "error.product_not_found", nil)

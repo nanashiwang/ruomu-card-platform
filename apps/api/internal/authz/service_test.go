@@ -184,3 +184,29 @@ func TestTranslationRoleBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestUserProductPriceRoleBoundaries(t *testing.T) {
+	svc := setupAuthzServiceTest(t)
+	if err := svc.BootstrapBuiltinRoles(); err != nil {
+		t.Fatal(err)
+	}
+	for i, role := range []string{"readonly_auditor", "operations", "integration", "system_admin", "support", "finance"} {
+		id := uint(200 + i)
+		if err := svc.SetAdminRoles(id, []string{role}); err != nil {
+			t.Fatal(err)
+		}
+		for _, check := range []struct {
+			path, method string
+			allowed      bool
+		}{
+			{"/admin/users/7/product-prices", "GET", true},
+			{"/admin/users/7/product-prices", "PUT", role == "operations"},
+			{"/admin/users/7/product-prices/9", "DELETE", role == "operations"},
+		} {
+			got, err := svc.EnforceAdmin(id, check.path, check.method)
+			if err != nil || got != check.allowed {
+				t.Fatalf("%s %s %s: got %v want %v (%v)", role, check.method, check.path, got, check.allowed, err)
+			}
+		}
+	}
+}

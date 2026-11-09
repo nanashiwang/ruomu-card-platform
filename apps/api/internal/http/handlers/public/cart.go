@@ -27,7 +27,7 @@ func (h *Handler) GetCart(c *gin.Context) {
 		return
 	}
 
-	items, err := h.CartService.ListByUser(uid)
+	items, err := h.CartService.ListByUserWithPricing(uid, !isResellerTenant(tenantFromRequest(c)))
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidOrderItem):

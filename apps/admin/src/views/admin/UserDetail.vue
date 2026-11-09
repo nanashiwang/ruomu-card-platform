@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { adminAPI, type AdminWalletAccount, type AdminWalletTransaction } from '@/api/admin'
 import type { AdminUser, AdminOrder, AdminPayment, AdminMemberLevel, AdminUserOAuthIdentity } from '@/api/types'
+import UserProductPrices from '@/components/admin/UserProductPrices.vue'
 import IdCell from '@/components/IdCell.vue'
 import { BadgeCheck, Copy, BadgeAlert } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -44,11 +45,12 @@ interface UserDetailCouponUsage {
 const user = ref<(AdminUser & Record<string, unknown>) | null>(null)
 const userError = ref('')
 
-const activeTab = ref<'orders' | 'payments' | 'coupons' | 'wallet'>('orders')
-const tabs = computed<Array<{ key: 'orders' | 'payments' | 'coupons' | 'wallet'; label: string }>>(() => [
+const activeTab = ref<'orders' | 'payments' | 'coupons' | 'wallet' | 'prices'>('orders')
+const tabs = computed<Array<{ key: 'orders' | 'payments' | 'coupons' | 'wallet' | 'prices'; label: string }>>(() => [
   { key: 'orders', label: t('admin.userDetail.tabs.orders') },
   { key: 'payments', label: t('admin.userDetail.tabs.payments') },
   { key: 'coupons', label: t('admin.userDetail.tabs.coupons') },
+  { key: 'prices', label: t('userPrices.title') },
   { key: 'wallet', label: t('admin.userDetail.tabs.wallet') },
 ])
 
@@ -269,7 +271,7 @@ const changeWalletPageSize = (size: number) => {
   fetchWalletTransactions(1)
 }
 
-const changeTab = (tab: 'orders' | 'payments' | 'coupons' | 'wallet') => {
+const changeTab = (tab: 'orders' | 'payments' | 'coupons' | 'wallet' | 'prices') => {
   activeTab.value = tab
   if (tab === 'orders') {
     fetchOrders(ordersPagination.value.page)
@@ -277,7 +279,7 @@ const changeTab = (tab: 'orders' | 'payments' | 'coupons' | 'wallet') => {
     fetchPayments(paymentsPagination.value.page)
   } else if (tab === 'coupons') {
     fetchCoupons(couponsPagination.value.page)
-  } else {
+  } else if (tab === 'wallet') {
     walletError.value = ''
     walletSuccess.value = ''
     void loadWalletData(walletPagination.value.page)
@@ -680,6 +682,8 @@ watch(
         {{ tab.label }}
       </button>
     </div>
+
+    <UserProductPrices v-if="activeTab === 'prices'" :key="userId" :user-id="userId" :currency="siteCurrency" />
 
     <div v-if="activeTab === 'orders'" class="rounded-xl border border-border bg-card overflow-x-auto">
       <Table class="min-w-[720px]">

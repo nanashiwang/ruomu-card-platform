@@ -74,6 +74,8 @@ func BuiltinRoleSeeds() []RoleSeed {
 				{Object: "/admin/member-levels/backfill", Action: "POST"},
 				{Object: "/admin/member-level-prices", Action: "*"},
 				{Object: "/admin/member-level-prices/batch", Action: "POST"},
+				{Object: "/admin/users/:id/product-prices", Action: "PUT"},
+				{Object: "/admin/users/:id/product-prices/:price_id", Action: "DELETE"},
 				{Object: "/admin/member-level-prices/:id", Action: "DELETE"},
 				{Object: "/admin/post-categories", Action: "GET"},
 				{Object: "/admin/post-categories", Action: "POST"},

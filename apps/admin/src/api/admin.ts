@@ -332,6 +332,9 @@ export const adminAPI = {
   deleteMedia: (id: number) => api.delete(`/admin/media/${id}`),
   batchDeleteMedia: (ids: number[]) => api.post('/admin/media/batch-delete', { ids }),
 
+  getUserProductPrices: (userId: number) => api.get(`/admin/users/${userId}/product-prices`),
+  setUserProductPrice: (userId: number, data: { product_id: number; sku_id: number; price_amount: string }) => api.put(`/admin/users/${userId}/product-prices`, data),
+  deleteUserProductPrice: (userId: number, id: number) => api.delete(`/admin/users/${userId}/product-prices/${id}`),
   getProducts: (params?: Record<string, unknown>) => api.get('/admin/products', { params }),
   getProduct: (id: number) => api.get(`/admin/products/${id}`),
   createProduct: (data: Partial<AdminProduct>) => api.post('/admin/products', data),

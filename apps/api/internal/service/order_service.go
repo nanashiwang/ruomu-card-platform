@@ -35,6 +35,7 @@ type OrderService struct {
 	defaultEmailConfig      config.EmailConfig
 	walletService           *WalletService
 	affiliateSvc            *AffiliateService
+	userProductPriceService *UserProductPriceService
 	memberLevelService      *MemberLevelService
 	resellerPricingResolver *ResellerPricingResolver
 	resellerAccountingSvc   *ResellerAccountingService
@@ -67,6 +68,7 @@ type OrderServiceOptions struct {
 	DefaultEmailConfig        config.EmailConfig
 	WalletService             *WalletService
 	AffiliateService          *AffiliateService
+	UserProductPriceService   *UserProductPriceService
 	MemberLevelService        *MemberLevelService
 	ResellerPricingResolver   *ResellerPricingResolver
 	ResellerAccountingService *ResellerAccountingService
@@ -104,6 +106,7 @@ func NewOrderService(opts OrderServiceOptions) *OrderService {
 		walletService:           opts.WalletService,
 		affiliateSvc:            opts.AffiliateService,
 		memberLevelService:      opts.MemberLevelService,
+		userProductPriceService: opts.UserProductPriceService,
 		resellerPricingResolver: opts.ResellerPricingResolver,
 		resellerAccountingSvc:   opts.ResellerAccountingService,
 		riskControlSvc:          opts.RiskControlService,

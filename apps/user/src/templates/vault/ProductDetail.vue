@@ -125,7 +125,7 @@
           </div>
 
           <!-- 活动规则 -->
-          <div v-if="hasPromotionRules(product)" class="mb-[18px] rounded-md bg-[color:var(--gold-soft)] px-[15px] py-3">
+          <div v-if="!selectedSku?.user_price && hasPromotionRules(product)" class="mb-[18px] rounded-md bg-[color:var(--gold-soft)] px-[15px] py-3">
             <h4 class="mb-2 flex items-center gap-1.5 text-[13.5px] font-bold text-[color:var(--gold-strong)]"><Tag class="h-[15px] w-[15px]" /> {{ t('products.promotionRulesTitle') }}</h4>
             <ul class="grid gap-1">
               <li v-for="rule in getPromotionRules(product)" :key="rule.id" class="text-[13px] text-[color:var(--gold-strong)]">{{ formatPromotionRule(rule) }}</li>

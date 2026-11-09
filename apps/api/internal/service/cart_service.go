@@ -34,11 +34,12 @@ type UpsertCartItemInput struct {
 
 // CartService 购物车服务
 type CartService struct {
-	cartRepo       repository.CartRepository
-	productRepo    repository.ProductRepository
-	productSKURepo repository.ProductSKURepository
-	promotionRepo  repository.PromotionRepository
-	settingService *SettingService
+	userProductPriceService *UserProductPriceService
+	cartRepo                repository.CartRepository
+	productRepo             repository.ProductRepository
+	productSKURepo          repository.ProductSKURepository
+	promotionRepo           repository.PromotionRepository
+	settingService          *SettingService
 }
 
 // NewCartService 创建购物车服务
@@ -52,8 +53,16 @@ func NewCartService(cartRepo repository.CartRepository, productRepo repository.P
 	}
 }
 
+func (s *CartService) SetUserProductPriceService(prices *UserProductPriceService) {
+	s.userProductPriceService = prices
+}
+
 // ListByUser 获取用户购物车
 func (s *CartService) ListByUser(userID uint) ([]CartItemDetail, error) {
+	return s.ListByUserWithPricing(userID, true)
+}
+
+func (s *CartService) ListByUserWithPricing(userID uint, useUserPrices bool) ([]CartItemDetail, error) {
 	if userID == 0 {
 		return nil, ErrInvalidOrderItem
 	}
@@ -99,10 +108,22 @@ func (s *CartService) ListByUser(userID uint) ([]CartItemDetail, error) {
 			continue
 		}
 
+		var userPrice *models.Money
+		if useUserPrices {
+			userPrice, err = s.userProductPriceService.Resolve(userID, product.ID, sku.ID)
+			if err != nil {
+				return nil, err
+			}
+			if userPrice != nil {
+				copySKU := *sku
+				copySKU.PriceAmount = *userPrice
+				sku = &copySKU
+			}
+		}
 		priceCarrier := *product
 		priceCarrier.PriceAmount = sku.PriceAmount
 		unitPrice := sku.PriceAmount
-		if promotionService != nil {
+		if promotionService != nil && userPrice == nil {
 			_, discounted, err := promotionService.ApplyPromotion(&priceCarrier, item.Quantity)
 			if err != nil {
 				return nil, err

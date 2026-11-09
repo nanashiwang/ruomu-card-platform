@@ -201,7 +201,7 @@
                 </div>
 
                 <!-- 活动规则展示 -->
-                <div v-if="hasPromotionRules(product)" class="mb-8 rounded-xl border border-orange-200 dark:border-orange-800/50 bg-orange-50/50 dark:bg-orange-950/20 px-4 py-3">
+                <div v-if="!selectedSku?.user_price && hasPromotionRules(product)" class="mb-8 rounded-xl border border-orange-200 dark:border-orange-800/50 bg-orange-50/50 dark:bg-orange-950/20 px-4 py-3">
                   <h2 class="mb-2 text-sm font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1.5">
                     <Tag class="w-4 h-4" />
                     {{ t('products.promotionRulesTitle') }}

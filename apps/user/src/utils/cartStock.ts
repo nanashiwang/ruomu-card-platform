@@ -126,6 +126,8 @@ export const refreshCartStockSnapshots = async (cartStore: CartStoreLike) => {
     const stockRangeMax = normalizeStockNumber(matchedSku?.stock_range_max)
 
     cartStore.patchItem(item.productId, item.skuId, {
+      priceAmount: String(matchedSku.price_amount ?? item.priceAmount),
+      wholesalePrices: matchedSku.user_price ? [] : (Array.isArray(product.wholesale_prices) ? product.wholesale_prices : []),
       skuCode: String(matchedSku?.sku_code || item.skuCode || ''),
       skuSpecValues: (matchedSku?.spec_values && typeof matchedSku.spec_values === 'object')
         ? matchedSku.spec_values

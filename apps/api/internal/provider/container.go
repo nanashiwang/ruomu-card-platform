@@ -62,6 +62,7 @@ type Container struct {
 	ChannelClientRepo          repository.ChannelClientRepository
 	TelegramBroadcastRepo      repository.TelegramBroadcastRepository
 	MemberLevelRepo            repository.MemberLevelRepository
+	UserProductPriceRepo       repository.UserProductPriceRepository
 	MemberLevelPriceRepo       repository.MemberLevelPriceRepository
 	MediaRepo                  repository.MediaRepository
 	PostCategoryRepo           repository.PostCategoryRepository
@@ -114,6 +115,7 @@ type Container struct {
 	ReconciliationService         *service.ReconciliationService
 	ChannelClientService          *service.ChannelClientService
 	TelegramBroadcastService      *service.TelegramBroadcastService
+	UserProductPriceService       *service.UserProductPriceService
 	MemberLevelService            *service.MemberLevelService
 	AdProxyService                *service.AdProxyService
 	MediaService                  *service.MediaService
@@ -222,6 +224,7 @@ func (c *Container) initRepositories() {
 	c.TelegramBroadcastRepo = repository.NewTelegramBroadcastRepository(db)
 	c.MemberLevelRepo = repository.NewMemberLevelRepository(db)
 	c.MemberLevelPriceRepo = repository.NewMemberLevelPriceRepository(db)
+	c.UserProductPriceRepo = repository.NewUserProductPriceRepository(db)
 	c.MediaRepo = repository.NewMediaRepository(db)
 	c.PostCategoryRepo = repository.NewPostCategoryRepository(db)
 }
@@ -288,6 +291,8 @@ func (c *Container) initServices() {
 	c.CartService = service.NewCartService(c.CartRepo, c.ProductRepo, c.ProductSKURepo, c.PromotionRepo, c.SettingService)
 	c.WalletService = service.NewWalletService(c.WalletRepo, c.OrderRepo, c.OrderRefundRecordRepo, c.UserRepo, c.AffiliateService, c.SettingService)
 	c.OrderRefundService = service.NewOrderRefundService(c.OrderRepo, c.UserRepo, c.OrderRefundRecordRepo, c.AffiliateService, c.SettingService)
+	c.UserProductPriceService = service.NewUserProductPriceService(c.UserProductPriceRepo, c.UserRepo, c.ProductRepo, c.ProductSKURepo)
+	c.CartService.SetUserProductPriceService(c.UserProductPriceService)
 	c.MemberLevelService = service.NewMemberLevelService(c.MemberLevelRepo, c.MemberLevelPriceRepo, c.UserRepo)
 	c.OrderRiskControlService = service.NewOrderRiskControlService(c.SettingService, c.OrderRepo)
 	c.OrderService = service.NewOrderService(service.OrderServiceOptions{
@@ -308,6 +313,7 @@ func (c *Container) initServices() {
 		WalletService:             c.WalletService,
 		AffiliateService:          c.AffiliateService,
 		MemberLevelService:        c.MemberLevelService,
+		UserProductPriceService:   c.UserProductPriceService,
 		ResellerPricingResolver:   c.ResellerPricingResolver,
 		ResellerAccountingService: c.ResellerAccountingService,
 		RiskControlService:        c.OrderRiskControlService,

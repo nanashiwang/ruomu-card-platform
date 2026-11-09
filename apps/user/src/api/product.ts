@@ -1,8 +1,8 @@
-import { api } from './client'
+import { api, userApi } from './client'
 
 export const productAPI = {
-    list: (params?: any) => api.get('/public/products', { params }),
-    detail: (slug: string) => api.get(`/public/products/${slug}`),
+    list: (params?: any) => localStorage.getItem('user_token') ? userApi.get('/products', { params }) : api.get('/public/products', { params }),
+    detail: (slug: string) => localStorage.getItem('user_token') ? userApi.get(`/products/${slug}`) : api.get(`/public/products/${slug}`),
 }
 
 export const postAPI = {

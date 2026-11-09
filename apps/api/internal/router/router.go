@@ -135,6 +135,8 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 		user := storefront.Group("")
 		user.Use(UserJWTAuthMiddleware(cfg.UserJWT.SecretKey, c.UserRepo))
 		{
+			user.GET("/products", publicHandler.GetProducts)
+			user.GET("/products/:slug", publicHandler.GetProductBySlug)
 			user.GET("/me", publicHandler.GetCurrentUser)
 			user.GET("/me/login-logs", publicHandler.GetMyLoginLogs)
 			user.PUT("/me/profile", publicHandler.UpdateUserProfile)
@@ -513,6 +515,9 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 				authorized.GET("/user-login-logs", adminHandler.GetUserLoginLogs)
 				authorized.PUT("/users/batch-status", adminHandler.BatchUpdateUserStatus)
 				authorized.DELETE("/users/:id/oauth/telegram", adminHandler.UnbindAdminUserTelegram)
+				authorized.GET("/users/:id/product-prices", adminHandler.GetUserProductPrices)
+				authorized.PUT("/users/:id/product-prices", adminHandler.SetUserProductPrice)
+				authorized.DELETE("/users/:id/product-prices/:price_id", adminHandler.DeleteUserProductPrice)
 				authorized.GET("/users/:id", adminHandler.GetAdminUser)
 				authorized.PUT("/users/:id", adminHandler.UpdateAdminUser)
 				authorized.GET("/users/:id/coupon-usages", adminHandler.GetAdminUserCouponUsages)

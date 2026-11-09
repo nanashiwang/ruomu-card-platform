@@ -124,6 +124,10 @@ export function useProductLabels() {
     return Number.isFinite(id) && id > 0 ? id : 0
   }
   const normalizeSkuCode = (value: unknown) => normalizeText(value).toLowerCase()
+  const hasUserPrice = (product: any, skuId?: any) => {
+    if (Number(skuId || 0) > 0) return product?.skus?.some((sku: any) => Number(sku.id) === Number(skuId) && sku.user_price === true) === true
+    return product?.user_price === true
+  }
   const allWholesalePrices = (product: any): any[] => {
     if (Array.isArray(product?.wholesale_prices)) return product.wholesale_prices
     if (Array.isArray(product?.wholesalePrices)) return product.wholesalePrices
@@ -142,6 +146,7 @@ export function useProductLabels() {
     return tiers.some((tier) => !isUniversalWholesaleTier(tier) && wholesaleTierMatchesSku(tier, skuId, skuCode))
   }
   const getWholesalePrices = (product: any, skuId?: any, skuCode?: any): any[] => {
+    if (hasUserPrice(product, skuId)) return []
     const tiers = allWholesalePrices(product)
     const hasSku = normalizeSkuId(skuId) > 0 || normalizeText(skuCode) !== ''
     if (!hasSku) return tiers
@@ -155,6 +160,7 @@ export function useProductLabels() {
   const hasWholesalePrices = (product: any) => getWholesalePrices(product).length > 0
 
   const resolveWholesalePriceAmount = (product: any, basePrice: any, matchQuantity: number, skuId?: any, skuCode?: any, lineQuantity?: number) => {
+    if (hasUserPrice(product, skuId)) return null
     const base = parsePriceAmount(basePrice)
     if (base === null || !Number.isFinite(matchQuantity) || matchQuantity <= 0) return null
     const hasSku = normalizeSkuId(skuId) > 0 || normalizeText(skuCode) !== ''
@@ -176,6 +182,7 @@ export function useProductLabels() {
 
   const resolveMemberPriceAmount = (product: any, skuId: any, basePrice: any, memberLevelId: any, discountRate?: any) => {
     const base = parsePriceAmount(basePrice)
+    if (hasUserPrice(product, skuId)) return null
     const levelId = Number(memberLevelId || 0)
     if (base === null || base <= 0 || !Number.isFinite(levelId) || levelId <= 0) return null
 
