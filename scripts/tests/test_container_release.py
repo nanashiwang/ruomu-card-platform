@@ -1,6 +1,7 @@
 """Adversarial release checks; no Docker daemon, credentials or network needed."""
 import copy
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -8,7 +9,7 @@ import sqlite3
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 spec = importlib.util.spec_from_file_location('release', Path(__file__).resolve().parents[1] / 'container_release.py')
 r = importlib.util.module_from_spec(spec)
@@ -27,6 +28,163 @@ def container(service, identity, running=True, project=None):
             'State': {'Running': running, 'StartedAt': 'fixed', 'Status': 'running' if running else 'exited'}, 'Mounts': []}
 
 class ReleaseTests(unittest.TestCase):
+    @staticmethod
+    def release(tag, *, draft=False, prerelease=False, assets=None, published_at='2026-11-10T00:00:00Z'):
+        return {
+            'tag_name': tag,
+            'draft': draft,
+            'prerelease': prerelease,
+            'published_at': published_at,
+            'assets': [{'name': name, 'state': 'uploaded', 'size': 100} for name in (
+                r.RELEASE_ASSETS if assets is None else assets
+            )],
+        }
+
+    def test_latest_release_skips_drafts_prereleases_and_incomplete_versions(self):
+        latest, older = 'f' * 40, 'e' * 40
+        releases = [
+            self.release('card-' + 'd' * 40, draft=True),
+            self.release('card-' + 'c' * 40, prerelease=True),
+            self.release('main'),
+            self.release('card-' + latest, assets={'api.tar.gz', 'user.tar.gz'}),
+            self.release('card-' + older, published_at='2026-11-10T01:00:00Z'),
+            self.release('card-' + latest, published_at='2026-11-10T02:00:00Z'),
+        ]
+
+        class Response(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *_): self.close()
+
+        with patch.object(r, 'urlopen', return_value=Response(json.dumps(releases).encode())) as open_url:
+            self.assertEqual(r.resolve_latest_release(), latest)
+        request = open_url.call_args.args[0]
+        self.assertIn('/releases?per_page=100&page=1', request.full_url)
+        self.assertEqual(request.get_header('Accept'), 'application/vnd.github+json')
+
+    def test_latest_release_paginates_and_rejects_unavailable_or_invalid_lists(self):
+        old_release = self.release('card-' + 'a' * 40)
+        full_page = [self.release('main') for _ in range(r.RELEASE_API_PAGE_SIZE)]
+        full_page[0] = self.release('card-' + 'b' * 40, published_at='2026-11-09T00:00:00Z')
+
+        class Response(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *_): self.close()
+
+        responses = [Response(json.dumps(full_page).encode()), Response(json.dumps([old_release]).encode())]
+        with patch.object(r, 'urlopen', side_effect=responses) as open_url:
+            self.assertEqual(r.resolve_latest_release(), 'a' * 40)
+        self.assertIn('page=2', open_url.call_args_list[1].args[0].full_url)
+
+        with patch.object(r, 'urlopen', side_effect=OSError('private transport detail')):
+            with self.assertRaisesRegex(r.ReleaseError, 'provide a full 40-character SHA'):
+                r.resolve_latest_release()
+        with patch.object(r, 'urlopen', return_value=Response(b'{invalid')):
+            with self.assertRaisesRegex(r.ReleaseError, 'provide a full 40-character SHA'):
+                r.resolve_latest_release()
+        with patch.object(r, 'urlopen', return_value=Response(json.dumps([]).encode())):
+            with self.assertRaisesRegex(r.ReleaseError, 'No complete published'):
+                r.resolve_latest_release()
+
+    def test_latest_release_requires_uploaded_assets_and_valid_metadata(self):
+        valid = self.release('card-' + REV)
+        uploading = copy.deepcopy(valid)
+        uploading['published_at'] = '2026-11-11T00:00:00Z'
+        uploading['assets'][0]['state'] = 'new'
+        empty = copy.deepcopy(valid)
+        empty['assets'][0]['size'] = 0
+        bad_date = {**valid, 'published_at': 'invalid'}
+        missing_flag = {**valid, 'draft': None}
+        malformed = {**valid, 'tag_name': ['card-' + REV]}
+        with patch.object(r, 'urlopen', return_value=io.BytesIO(json.dumps([
+            uploading, empty, bad_date, missing_flag, malformed, valid
+        ]).encode())):
+            self.assertEqual(r.resolve_latest_release(), REV)
+
+    def test_update_latest_does_not_redeploy_current_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory).resolve() / 'current.json'
+            owned = {name: container(name, name) for name in r.COMPONENTS}
+            for item in owned.values(): item['Config']['Image'] = item['Image']
+            state.write_text(json.dumps({'revision': REV, 'components': {
+                name: {'runtime_id': item['Image']} for name, item in owned.items()}}))
+            with patch.object(r, 'inventory', return_value=(owned, {})), \
+                 patch.object(r, 'read_config'), patch.object(r, 'health'), \
+                 patch.object(r, 'STATE', state), \
+                 patch.object(r, 'resolve_latest_release', return_value=REV), \
+                 patch.object(r, 'deploy') as deploy:
+                r.update_latest()
+            deploy.assert_not_called()
+
+    def test_update_latest_does_not_hide_runtime_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory).resolve() / 'current.json'
+            state.write_text(json.dumps({'revision': REV, 'components': {
+                name: {'runtime_id': 'sha256:' + 'a' * 64} for name in r.COMPONENTS}}))
+            owned = {name: container(name, name) for name in r.COMPONENTS}
+            for item in owned.values(): item['Config']['Image'] = item['Image']
+            with patch.object(r, 'inventory', return_value=(owned, {})), \
+                 patch.object(r, 'read_config'), patch.object(r, 'health'), \
+                 patch.object(r, 'STATE', state), \
+                 patch.object(r, 'resolve_latest_release', return_value=REV), \
+                 patch.object(r, 'deploy') as deploy:
+                with self.assertRaisesRegex(r.ReleaseError, 'Running images differ'):
+                    r.update_latest()
+            deploy.assert_not_called()
+
+    def test_update_latest_deploys_resolved_release_and_rejects_bad_state(self):
+        latest = 'b' * 40
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory).resolve() / 'current.json'
+            state.write_text(json.dumps({'revision': REV}))
+            with patch.object(r, 'STATE', state), \
+                 patch.object(r, 'resolve_latest_release', return_value=latest), \
+                 patch.object(r, 'deploy') as deploy:
+                r.update_latest()
+            deploy.assert_called_once_with(latest)
+
+            state.write_text('{invalid')
+            with patch.object(r, 'STATE', state), \
+                 patch.object(r, 'resolve_latest_release', return_value=latest), \
+                 patch.object(r, 'deploy') as deploy:
+                with self.assertRaisesRegex(r.ReleaseError, 'Invalid installed release record'):
+                    r.update_latest()
+            deploy.assert_not_called()
+
+    def test_cli_optional_revision_and_resolution_failure_do_not_mutate_services(self):
+        for invoked, args, automatic in [('rcard-update', [], True),
+                                         ('rcard', ['update'], True),
+                                         ('rcard-update', [REV], False),
+                                         ('rcard', ['update', REV], False)]:
+            with self.subTest(invoked=invoked, args=args), \
+                 patch.object(r.sys, 'argv', [invoked]), \
+                 patch.object(r.os, 'geteuid', return_value=0), \
+                 patch.object(r.os, 'umask'), patch.object(r.signal, 'signal'), \
+                 patch.object(r.fcntl, 'flock'), patch('builtins.open', mock_open()), \
+                 patch.object(r, 'update_latest') as latest, patch.object(r, 'deploy') as deploy:
+                r.main(args)
+                if automatic:
+                    latest.assert_called_once_with()
+                    deploy.assert_not_called()
+                else:
+                    latest.assert_not_called()
+                    deploy.assert_called_once_with(REV)
+        with patch.object(r, 'resolve_latest_release', side_effect=r.ReleaseError('offline')), \
+             patch.object(r, 'deploy') as deploy:
+            with self.assertRaisesRegex(r.ReleaseError, 'offline'):
+                r.update_latest()
+            deploy.assert_not_called()
+
+    def test_latest_release_limits_payload_and_pagination(self):
+        with patch.object(r, 'urlopen', return_value=io.BytesIO(b' ' * (r.RELEASE_API_MAX_BYTES + 1))):
+            with self.assertRaisesRegex(r.ReleaseError, 'size limit'):
+                r.resolve_latest_release()
+        with patch.object(r, 'RELEASE_API_MAX_PAGES', 1), \
+             patch.object(r, 'urlopen', return_value=io.BytesIO(json.dumps([
+                 self.release('card-' + REV) for _ in range(r.RELEASE_API_PAGE_SIZE)
+             ]).encode())):
+            with self.assertRaisesRegex(r.ReleaseError, 'pagination limit'):
+                r.resolve_latest_release()
+
     def test_manifest_pins_exact_components_repositories_revision_and_hashes(self):
         self.assertEqual(r.validate_manifest(manifest(), REV), manifest())
         for field, value in [('image', 'evil.test/image@sha256:' + 'b' * 64), ('image', r.REGISTRY + 'api:latest'),
@@ -109,6 +267,7 @@ class ReleaseTests(unittest.TestCase):
         for name, (command, args) in cases.items():
             with self.subTest(name=name):
                 self.assertEqual(r.normalize_shortcut(args, name), [command, *args])
+        self.assertEqual(r.normalize_shortcut([], 'rcard-update'), ['update'])
 
     def test_stop_only_stops_application_services(self):
         path = Path('/opt/ruomu-card-platform/deploy/compose.yml')

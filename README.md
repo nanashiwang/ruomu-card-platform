@@ -131,7 +131,7 @@ chmod 600 .env
 
 已有共享服务器可使用 GitHub 测试、镜像发布和保留现有 Compose 布局的迁移工具，详见 [固定版本容器发布](docs/08-固定版本容器发布.md)。生产数据与密钥留在服务器，首次迁移必须核对应用源码、配置和数据库兼容性；发布不会自动部署或清理服务器。
 
-固定版本发布提供 `rcard-update`、`rcard-stop`、`rcard-start`、`rcard-restart`、`rcard-reopen` 和 `rcard-uninstall` 服务器快捷命令。先从已审核的 Release 安装并校验，再按 [固定版本容器发布](docs/08-固定版本容器发布.md) 使用；卸载仅移除三端应用容器并保留持久数据。
+固定版本发布提供 `rcard-update`、`rcard-stop`、`rcard-start`、`rcard-restart`、`rcard-reopen` 和 `rcard-uninstall` 服务器快捷命令。安装新版工具后，直接运行 `rcard-update` 即可更新至最新完整正式固定版本，也可传入完整提交 SHA 指定版本。先从已审核的 Release 安装并校验，再按 [固定版本容器发布](docs/08-固定版本容器发布.md) 使用；卸载仅移除三端应用容器并保留持久数据。
 
 ## 订单发票
 

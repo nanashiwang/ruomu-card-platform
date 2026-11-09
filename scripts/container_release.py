@@ -8,6 +8,7 @@ Service commands target api/user/admin only and never remove volumes or images.
 from __future__ import annotations
 import argparse
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -36,6 +37,10 @@ PROBE = 'ruomu-release-probe'
 OWNER = 'org.ruomu.release-probe'
 SHA = r'[0-9a-f]{40}'
 DIGEST = r'sha256:[0-9a-f]{64}'
+RELEASE_ASSETS = {'release.json', 'api.tar.gz', 'user.tar.gz', 'admin.tar.gz'}
+RELEASE_API_PAGE_SIZE = 100
+RELEASE_API_MAX_PAGES = 20
+RELEASE_API_MAX_BYTES = 2 * 1024 * 1024
 
 class ReleaseError(RuntimeError):
     pass
@@ -169,6 +174,67 @@ def acquire(revision):
              labels.get('org.ruomu.component') == name, 'Image ownership/revision mismatch')
         item['runtime_id'] = info['Id']
     return data
+
+def resolve_latest_release():
+    """Find the newest complete card-SHA release, independent of GitHub's latest flag."""
+    endpoint = f'https://api.github.com/repos/{REPO}/releases'
+    candidates = []
+    for page in range(1, RELEASE_API_MAX_PAGES + 1):
+        request = Request(
+            f'{endpoint}?per_page={RELEASE_API_PAGE_SIZE}&page={page}',
+            headers={
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'ruomu-container-release/1',
+            },
+        )
+        try:
+            with urlopen(request, timeout=20) as response:
+                payload = response.read(RELEASE_API_MAX_BYTES + 1)
+            need(len(payload) <= RELEASE_API_MAX_BYTES, 'Release list response exceeds size limit')
+            releases = json.loads(payload)
+        except ReleaseError:
+            raise
+        except Exception:
+            raise ReleaseError(
+                'Unable to resolve latest published release; provide a full 40-character SHA to update explicitly'
+            ) from None
+
+        need(isinstance(releases, list), 'Invalid GitHub release list response')
+        for release in releases:
+            if not isinstance(release, dict) or release.get('draft') is not False or release.get('prerelease') is not False:
+                continue
+            tag = release.get('tag_name')
+            if not isinstance(tag, str):
+                continue
+            match = re.fullmatch(r'card-([0-9a-f]{40})', tag)
+            assets = release.get('assets')
+            if not match or not isinstance(assets, list):
+                continue
+            asset_names = {asset.get('name') for asset in assets
+                           if isinstance(asset, dict) and isinstance(asset.get('name'), str)
+                           and asset.get('state') == 'uploaded' and isinstance(asset.get('size'), int)
+                           and asset['size'] > 0}
+            published = release.get('published_at')
+            if not isinstance(published, str):
+                continue
+            try:
+                published_at = datetime.fromisoformat(published.replace('Z', '+00:00'))
+            except ValueError:
+                continue
+            if published_at.tzinfo is None:
+                continue
+            if RELEASE_ASSETS.issubset(asset_names):
+                candidates.append((published_at.astimezone(timezone.utc), match.group(1)))
+
+        if len(releases) < RELEASE_API_PAGE_SIZE:
+            if candidates:
+                return max(candidates, key=lambda item: item[0])[1]
+            break
+    else:
+        raise ReleaseError('Release list pagination limit reached; use an explicit full SHA')
+    raise ReleaseError(
+        'No complete published fixed-SHA release was found; provide a full 40-character SHA to update explicitly'
+    )
 
 def containers():
     ids = run('docker', 'ps', '-aq').stdout.split()
@@ -683,6 +749,37 @@ def deploy(revision):
     print('ROLLBACK_DIRECTORY=' + str(folder))
     print('No caches, volumes, images or backups were deleted.')
 
+def update_latest():
+    revision = resolve_latest_release()
+    if STATE.exists():
+        safe_path(STATE)
+        try:
+            current = json.loads(STATE.read_text())
+        except Exception:
+            raise ReleaseError('Invalid installed release record') from None
+        need(isinstance(current, dict) and isinstance(current.get('revision'), str) and
+             re.fullmatch(SHA, current['revision']),
+             'Invalid installed release record')
+        if current['revision'] == revision:
+            # A state file alone cannot prove the live installation is current.
+            owned, _ = inventory()
+            read_config(owned)
+            components = current.get('components')
+            need(isinstance(components, dict) and set(components) == set(COMPONENTS),
+                 'Invalid installed release components')
+            for name in COMPONENTS:
+                component = components[name]
+                need(isinstance(component, dict) and isinstance(component.get('runtime_id'), str)
+                     and re.fullmatch(DIGEST, component['runtime_id'])
+                     and owned[name]['Config']['Image'] == component['runtime_id']
+                     and owned[name]['Image'] == component['runtime_id'],
+                     'Running images differ from the managed release record')
+            health(owned)
+            print(f'ALREADY_LATEST={revision}')
+            return
+    print(f'LATEST_RELEASE={revision}', flush=True)
+    deploy(revision)
+
 def rollback(folder):
     safe_path(folder)
     need(folder.parent == BACKUPS and folder.is_dir(), 'Unexpected rollback directory')
@@ -741,7 +838,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('preflight')
     sub.add_parser('deploy').add_argument('revision')
-    sub.add_parser('update').add_argument('revision')
+    sub.add_parser('update').add_argument('revision', nargs='?', help='full commit SHA; omit to update to the newest published fixed release')
     sub.add_parser('rollback').add_argument('directory', type=Path)
     for command in ('stop', 'start'):
         sub.add_parser(command)
@@ -757,7 +854,12 @@ def main(argv=None):
     with open('/run/lock/ruomu-container-release.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.command == 'preflight': preflight()
-        elif args.command in ('deploy', 'update'): deploy(args.revision)
+        elif args.command == 'deploy': deploy(args.revision)
+        elif args.command == 'update':
+            if args.revision:
+                deploy(args.revision)
+            else:
+                update_latest()
         elif args.command == 'rollback': rollback(args.directory)
         elif args.command == 'stop': stop_services()
         elif args.command == 'start': start_services()
