@@ -10,6 +10,7 @@ import (
 	"github.com/dujiao-next/internal/admincmd"
 	"github.com/dujiao-next/internal/app"
 	"github.com/dujiao-next/internal/config"
+	"github.com/dujiao-next/internal/invoicemigrate"
 	"github.com/dujiao-next/internal/logger"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/version"
@@ -29,6 +30,24 @@ const (
 )
 
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "migrate-invoices" {
+		if len(os.Args) != 3 || os.Args[2] != "--apply" {
+			fmt.Fprintln(os.Stderr, "用法: ruomu-api migrate-invoices --apply（先备份并停止业务写入；仅迁移发票表及财务角色发票权限）")
+			os.Exit(2)
+		}
+		cfg := config.Load()
+		if err := models.InitDB(cfg.Database.Driver, cfg.Database.DSN, models.DBPoolConfig{MaxOpenConns: 1, MaxIdleConns: 1}); err != nil {
+			fmt.Fprintln(os.Stderr, "数据库连接失败:", err)
+			os.Exit(1)
+		}
+		if err := invoicemigrate.Apply(models.DB); err != nil {
+			fmt.Fprintln(os.Stderr, "发票迁移失败:", err)
+			os.Exit(1)
+		}
+		fmt.Println("INVOICE_MIGRATION_SUCCESS")
+		return
+	}
+
 	// admin 子命令短路：./ruomu-api admin <subcommand>
 	// 在 banner / web 提示 / migrate / default admin / app.Run 之前处理，
 	// 避免运维操作时打印一堆无关日志。

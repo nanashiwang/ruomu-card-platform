@@ -1,8 +1,10 @@
+import { invoiceMessages } from './invoice'
 import { createI18n } from 'vue-i18n'
 import { translationMessages } from './translation'
 
 const messages = {
   'zh-CN': {
+    invoice: invoiceMessages['zh-CN'],
     translation: translationMessages['zh-CN'],
     common: {
       api: {
@@ -4272,6 +4274,7 @@ const messages = {
     },
   },
   'zh-TW': {
+    invoice: invoiceMessages['zh-TW'],
     translation: translationMessages['zh-TW'],
     common: {
       api: {
@@ -8541,6 +8544,7 @@ const messages = {
     },
   },
   'en-US': {
+    invoice: invoiceMessages['en-US'],
     translation: translationMessages['en-US'],
     common: {
       api: {

@@ -1,9 +1,11 @@
+import { invoiceMessages } from './invoice'
 import { createI18n } from 'vue-i18n'
 import { storefrontMessages } from './storefront'
 
 // 语言包
 const messages = {
     'zh-CN': {
+    invoice: invoiceMessages['zh-CN'],
         storefront: storefrontMessages['zh-CN'],
         common: {
             siteName: '若木云卡',
@@ -1746,6 +1748,7 @@ const messages = {
         },
     },
     'zh-TW': {
+    invoice: invoiceMessages['zh-TW'],
         storefront: storefrontMessages['zh-TW'],
         common: {
             siteName: '若木云卡',
@@ -3488,6 +3491,7 @@ const messages = {
         },
     },
     'en-US': {
+    invoice: invoiceMessages['en-US'],
         storefront: storefrontMessages['en-US'],
         common: {
             siteName: '若木云卡',
