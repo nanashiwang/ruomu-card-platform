@@ -319,6 +319,7 @@ const (
 	NotificationEventOrderPaidSuccess         = "order_paid_success"
 	NotificationEventManualFulfillmentPending = "manual_fulfillment_pending"
 	NotificationEventExceptionAlert           = "exception_alert"
+	NotificationEventInvoiceRequested         = "invoice_requested"
 	NotificationEventExceptionAlertCheck      = "exception_alert_check"
 )
 

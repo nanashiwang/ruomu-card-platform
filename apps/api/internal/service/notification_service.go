@@ -406,6 +406,7 @@ func isNotificationEventSupported(eventType string) bool {
 	case constants.NotificationEventWalletRechargeSuccess,
 		constants.NotificationEventOrderPaidSuccess,
 		constants.NotificationEventManualFulfillmentPending,
+		constants.NotificationEventInvoiceRequested,
 		constants.NotificationEventExceptionAlert,
 		constants.NotificationEventExceptionAlertCheck:
 		return true
@@ -983,6 +984,8 @@ func buildNotificationTestVariables(scene, locale string) map[string]interface{}
 			"fulfillment_items_summary": buildNotificationTestFulfillmentItems(locale),
 			"delivery_summary":          buildNotificationDeliverySummary(locale, notificationOrderItemCounts{Total: 2, Auto: 1, Manual: 1}),
 		}
+	case constants.NotificationEventInvoiceRequested:
+		return map[string]interface{}{"order_no": "TEST-INVOICE-001", "amount": "100.00", "currency": "CNY"}
 	case constants.NotificationEventManualFulfillmentPending:
 		return map[string]interface{}{
 			"customer_label":            localizedNotificationText(locale, "张三 <zhangsan@example.com>", "張三 <zhangsan@example.com>", "Alex Zhang <zhangsan@example.com>"),

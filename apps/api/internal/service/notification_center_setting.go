@@ -48,6 +48,7 @@ type NotificationSceneSetting struct {
 	WalletRechargeSuccess    bool `json:"wallet_recharge_success"`
 	OrderPaidSuccess         bool `json:"order_paid_success"`
 	ManualFulfillmentPending bool `json:"manual_fulfillment_pending"`
+	InvoiceRequested         bool `json:"invoice_requested"`
 	ExceptionAlert           bool `json:"exception_alert"`
 }
 
@@ -69,6 +70,7 @@ type NotificationTemplatesSetting struct {
 	WalletRechargeSuccess    NotificationSceneTemplate `json:"wallet_recharge_success"`
 	OrderPaidSuccess         NotificationSceneTemplate `json:"order_paid_success"`
 	ManualFulfillmentPending NotificationSceneTemplate `json:"manual_fulfillment_pending"`
+	InvoiceRequested         NotificationSceneTemplate `json:"invoice_requested"`
 	ExceptionAlert           NotificationSceneTemplate `json:"exception_alert"`
 }
 
@@ -115,6 +117,7 @@ type NotificationScenePatch struct {
 	WalletRechargeSuccess    *bool `json:"wallet_recharge_success"`
 	OrderPaidSuccess         *bool `json:"order_paid_success"`
 	ManualFulfillmentPending *bool `json:"manual_fulfillment_pending"`
+	InvoiceRequested         *bool `json:"invoice_requested"`
 	ExceptionAlert           *bool `json:"exception_alert"`
 }
 
@@ -123,6 +126,7 @@ type NotificationTemplatesPatch struct {
 	WalletRechargeSuccess    *NotificationSceneTemplatePatch `json:"wallet_recharge_success"`
 	OrderPaidSuccess         *NotificationSceneTemplatePatch `json:"order_paid_success"`
 	ManualFulfillmentPending *NotificationSceneTemplatePatch `json:"manual_fulfillment_pending"`
+	InvoiceRequested         *NotificationSceneTemplatePatch `json:"invoice_requested"`
 	ExceptionAlert           *NotificationSceneTemplatePatch `json:"exception_alert"`
 }
 
@@ -157,6 +161,7 @@ func NotificationCenterDefaultSetting() NotificationCenterSetting {
 			WalletRechargeSuccess:    true,
 			OrderPaidSuccess:         true,
 			ManualFulfillmentPending: true,
+			InvoiceRequested:         false,
 			ExceptionAlert:           true,
 		},
 		Templates: NotificationTemplatesSetting{
@@ -201,6 +206,11 @@ func NotificationCenterDefaultSetting() NotificationCenterSetting {
 					Title: "Manual Fulfillment Required",
 					Body:  "Customer: {{customer_label}}\nEmail: {{customer_email}}\nOrder No: {{order_no}}\nOrder Status: {{order_status}}\nPending Items:\n{{fulfillment_items_summary}}\nDelivery Summary: {{delivery_summary}}",
 				},
+			},
+			InvoiceRequested: NotificationSceneTemplate{
+				ZHCN: NotificationLocalizedTemplate{Title: "收到发票申请", Body: "订单号：{{order_no}}\n金额：{{amount}} {{currency}}\n请进入后台「订单管理 → 发票管理」审核处理。"},
+				ZHTW: NotificationLocalizedTemplate{Title: "收到發票申請", Body: "訂單號：{{order_no}}\n金額：{{amount}} {{currency}}\n請進入後台發票管理審核處理。"},
+				ENUS: NotificationLocalizedTemplate{Title: "Invoice requested", Body: "Order: {{order_no}}\nAmount: {{amount}} {{currency}}\nReview this request in admin invoice management."},
 			},
 			ExceptionAlert: NotificationSceneTemplate{
 				ZHCN: NotificationLocalizedTemplate{
@@ -301,12 +311,14 @@ func NotificationCenterSettingToMap(setting NotificationCenterSetting) map[strin
 			"wallet_recharge_success":    normalized.Scenes.WalletRechargeSuccess,
 			"order_paid_success":         normalized.Scenes.OrderPaidSuccess,
 			"manual_fulfillment_pending": normalized.Scenes.ManualFulfillmentPending,
+			"invoice_requested":          normalized.Scenes.InvoiceRequested,
 			"exception_alert":            normalized.Scenes.ExceptionAlert,
 		},
 		"templates": map[string]interface{}{
 			"wallet_recharge_success":    notificationSceneTemplateToMap(normalized.Templates.WalletRechargeSuccess),
 			"order_paid_success":         notificationSceneTemplateToMap(normalized.Templates.OrderPaidSuccess),
 			"manual_fulfillment_pending": notificationSceneTemplateToMap(normalized.Templates.ManualFulfillmentPending),
+			"invoice_requested":          notificationSceneTemplateToMap(normalized.Templates.InvoiceRequested),
 			"exception_alert":            notificationSceneTemplateToMap(normalized.Templates.ExceptionAlert),
 		},
 		"dedupe_ttl_seconds":                         normalized.DedupeTTLSeconds,
@@ -391,6 +403,9 @@ func (s *SettingService) PatchNotificationCenterSetting(patch NotificationCenter
 		if patch.Scenes.ManualFulfillmentPending != nil {
 			next.Scenes.ManualFulfillmentPending = *patch.Scenes.ManualFulfillmentPending
 		}
+		if patch.Scenes.InvoiceRequested != nil {
+			next.Scenes.InvoiceRequested = *patch.Scenes.InvoiceRequested
+		}
 		if patch.Scenes.ExceptionAlert != nil {
 			next.Scenes.ExceptionAlert = *patch.Scenes.ExceptionAlert
 		}
@@ -404,6 +419,9 @@ func (s *SettingService) PatchNotificationCenterSetting(patch NotificationCenter
 		}
 		if patch.Templates.ManualFulfillmentPending != nil {
 			applyNotificationSceneTemplatePatch(&next.Templates.ManualFulfillmentPending, patch.Templates.ManualFulfillmentPending)
+		}
+		if patch.Templates.InvoiceRequested != nil {
+			applyNotificationSceneTemplatePatch(&next.Templates.InvoiceRequested, patch.Templates.InvoiceRequested)
 		}
 		if patch.Templates.ExceptionAlert != nil {
 			applyNotificationSceneTemplatePatch(&next.Templates.ExceptionAlert, patch.Templates.ExceptionAlert)
@@ -429,6 +447,8 @@ func (s NotificationSceneSetting) IsSceneEnabled(eventType string) bool {
 		return s.OrderPaidSuccess
 	case constants.NotificationEventManualFulfillmentPending:
 		return s.ManualFulfillmentPending
+	case constants.NotificationEventInvoiceRequested:
+		return s.InvoiceRequested
 	case constants.NotificationEventExceptionAlert, constants.NotificationEventExceptionAlertCheck:
 		return s.ExceptionAlert
 	default:
@@ -445,6 +465,8 @@ func (s NotificationTemplatesSetting) TemplateByEvent(eventType string) Notifica
 		return s.OrderPaidSuccess
 	case constants.NotificationEventManualFulfillmentPending:
 		return s.ManualFulfillmentPending
+	case constants.NotificationEventInvoiceRequested:
+		return s.InvoiceRequested
 	case constants.NotificationEventExceptionAlert, constants.NotificationEventExceptionAlertCheck:
 		return s.ExceptionAlert
 	default:
@@ -493,6 +515,7 @@ func notificationCenterSettingFromJSON(raw models.JSON, fallback NotificationCen
 		next.Scenes.WalletRechargeSuccess = readBool(scenesMap, "wallet_recharge_success", next.Scenes.WalletRechargeSuccess)
 		next.Scenes.OrderPaidSuccess = readBool(scenesMap, "order_paid_success", next.Scenes.OrderPaidSuccess)
 		next.Scenes.ManualFulfillmentPending = readBool(scenesMap, "manual_fulfillment_pending", next.Scenes.ManualFulfillmentPending)
+		next.Scenes.InvoiceRequested = readBool(scenesMap, "invoice_requested", next.Scenes.InvoiceRequested)
 		next.Scenes.ExceptionAlert = readBool(scenesMap, "exception_alert", next.Scenes.ExceptionAlert)
 	}
 
@@ -505,6 +528,9 @@ func notificationCenterSettingFromJSON(raw models.JSON, fallback NotificationCen
 		}
 		if sceneMap := toStringAnyMap(templatesMap["manual_fulfillment_pending"]); sceneMap != nil {
 			next.Templates.ManualFulfillmentPending = notificationSceneTemplateFromMap(sceneMap, next.Templates.ManualFulfillmentPending)
+		}
+		if sceneMap := toStringAnyMap(templatesMap["invoice_requested"]); sceneMap != nil {
+			next.Templates.InvoiceRequested = notificationSceneTemplateFromMap(sceneMap, next.Templates.InvoiceRequested)
 		}
 		if sceneMap := toStringAnyMap(templatesMap["exception_alert"]); sceneMap != nil {
 			next.Templates.ExceptionAlert = notificationSceneTemplateFromMap(sceneMap, next.Templates.ExceptionAlert)
@@ -560,6 +586,7 @@ func normalizeNotificationTemplates(templates NotificationTemplatesSetting) Noti
 	templates.WalletRechargeSuccess = normalizeNotificationSceneTemplate(templates.WalletRechargeSuccess)
 	templates.OrderPaidSuccess = normalizeNotificationSceneTemplate(templates.OrderPaidSuccess)
 	templates.ManualFulfillmentPending = normalizeNotificationSceneTemplate(templates.ManualFulfillmentPending)
+	templates.InvoiceRequested = normalizeNotificationSceneTemplate(templates.InvoiceRequested)
 	templates.ExceptionAlert = normalizeNotificationSceneTemplate(templates.ExceptionAlert)
 	return templates
 }

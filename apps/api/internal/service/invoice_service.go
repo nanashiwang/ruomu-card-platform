@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dujiao-next/internal/constants"
+	"github.com/dujiao-next/internal/logger"
 	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/telegramidentity"
 	"gorm.io/gorm"
@@ -32,12 +33,17 @@ type InvoiceInput struct {
 }
 
 type InvoiceService struct {
-	db   *gorm.DB
-	send func(string, string, string, []byte) error
+	notify func(NotificationEnqueueInput) error
+	db     *gorm.DB
+	send   func(string, string, string, []byte) error
 }
 
 func NewInvoiceService(db *gorm.DB, email *EmailService) *InvoiceService {
 	return &InvoiceService{db: db, send: email.SendInvoicePDF}
+}
+
+func (s *InvoiceService) SetNotificationService(notifications *NotificationService) {
+	s.notify = notifications.Enqueue
 }
 
 func invoiceOrderEligible(o *models.Order) bool {
@@ -83,6 +89,7 @@ func (s *InvoiceService) Apply(orderID, userID uint, in InvoiceInput) (*models.O
 	} else {
 		in.TaxID = ""
 	}
+	var notification NotificationEnqueueInput
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		o, e := s.eligibleOrder(tx, orderID)
 		if e != nil {
@@ -91,6 +98,10 @@ func (s *InvoiceService) Apply(orderID, userID uint, in InvoiceInput) (*models.O
 		if userID == 0 || o.UserID != userID {
 			return gorm.ErrRecordNotFound
 		}
+		notification = NotificationEnqueueInput{EventType: constants.NotificationEventInvoiceRequested, BizType: "invoice", BizID: o.ID,
+			// Each committed submission is a distinct event. Bypass time dedupe so retries
+			// and rejected/resubmitted requests are not silently suppressed.
+			Force: true, Data: models.JSON{"order_no": o.OrderNo, "amount": o.TotalAmount.String(), "currency": o.Currency}}
 		record := models.OrderInvoice{OrderID: o.ID, OrderNo: o.OrderNo, UserID: o.UserID, Kind: in.Kind, Title: in.Title, TaxID: in.TaxID, Email: in.Email, Note: in.Note, Amount: o.TotalAmount, Currency: o.Currency, Status: "pending", MailStatus: "pending"}
 		result := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "order_id"}}, DoNothing: true}).Create(&record)
 		if result.Error != nil {
@@ -110,6 +121,11 @@ func (s *InvoiceService) Apply(orderID, userID uint, in InvoiceInput) (*models.O
 	})
 	if err != nil {
 		return nil, err
+	}
+	if s.notify != nil {
+		if err := s.notify(notification); err != nil {
+			logger.Warnw("invoice_notification_enqueue_failed", "order_id", orderID, "error", err)
+		}
 	}
 	return s.ForOrder(orderID)
 }

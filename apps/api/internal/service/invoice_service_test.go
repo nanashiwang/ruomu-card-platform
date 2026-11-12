@@ -2,10 +2,12 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dujiao-next/internal/queue"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -413,5 +415,106 @@ func TestInvoiceConcurrentApplicationsAndReviews(t *testing.T) {
 	s.db.Model(&models.OrderInvoice{}).Count(&count)
 	if count != 1 {
 		t.Fatal(count)
+	}
+}
+
+func TestInvoiceApplicationNotification(t *testing.T) {
+	s, o := invoiceFixture(t)
+	calls := 0
+	s.notify = func(input NotificationEnqueueInput) error {
+		calls++
+		// The application must already be committed when notifications are enqueued.
+		item, err := s.ForOrder(o.ID)
+		if err != nil || item == nil || item.Status != "pending" {
+			t.Fatalf("notification before commit: %v", err)
+		}
+		if input.EventType != "invoice_requested" || input.BizID != o.ID || input.Data["order_no"] != o.OrderNo || !input.Force {
+			t.Fatalf("unexpected payload: %+v", input)
+		}
+		if _, ok := input.Data["tax_id"]; ok {
+			t.Fatal("tax ID leaked into notification")
+		}
+		return errors.New("queue unavailable")
+	}
+	if _, err := s.Apply(o.ID, o.UserID+1, invoiceInput()); err == nil {
+		t.Fatal("wrong owner accepted")
+	}
+	if calls != 0 {
+		t.Fatal("invalid application notified")
+	}
+	item, err := s.Apply(o.ID, o.UserID, invoiceInput())
+	if err != nil || item == nil || calls != 1 {
+		t.Fatalf("queue failure affected application: %v, calls=%d", err, calls)
+	}
+	if _, err = s.Apply(o.ID, o.UserID, invoiceInput()); err == nil {
+		t.Fatal("duplicate accepted")
+	}
+	if calls != 1 {
+		t.Fatal("duplicate notified")
+	}
+	if err = s.Review(item.ID, 8, false, "请修改抬头"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.Apply(o.ID, o.UserID, invoiceInput()); err != nil || calls != 2 {
+		t.Fatalf("resubmission notification: %v, calls=%d", err, calls)
+	}
+}
+
+func TestInvoiceNotificationSettingCompatibility(t *testing.T) {
+	defaults := NotificationCenterDefaultSetting()
+	if defaults.Scenes.IsSceneEnabled("invoice_requested") {
+		t.Fatal("new scene must be opt-in")
+	}
+	defaults.Scenes.InvoiceRequested = true
+	restored := notificationCenterSettingFromJSON(NotificationCenterSettingToMap(defaults), NotificationCenterDefaultSetting())
+	if !restored.Scenes.IsSceneEnabled("invoice_requested") || !isNotificationEventSupported("invoice_requested") {
+		t.Fatal("scene lost on round trip")
+	}
+	for _, locale := range []string{"zh-CN", "zh-TW", "en-US"} {
+		tmpl := restored.Templates.TemplateByEvent("invoice_requested").ResolveLocaleTemplate(locale)
+		body := renderNotificationTemplate(tmpl.Body, buildNotificationTestVariables("invoice_requested", locale))
+		if tmpl.Title == "" || !strings.Contains(body, "TEST-INVOICE-001") || strings.Contains(body, "{{") {
+			t.Fatalf("invalid %s template: %s", locale, body)
+		}
+	}
+}
+
+func TestInvoiceNotificationToggleAndRetry(t *testing.T) {
+	settings := NewSettingService(newMockSettingRepo())
+	enabled := true
+	recipient := []string{"ops@example.test"}
+	title := "发票待办"
+	_, err := settings.PatchNotificationCenterSetting(NotificationCenterSettingPatch{
+		Channels:  &NotificationChannelsPatch{Email: &NotificationChannelPatch{Enabled: &enabled, Recipients: &recipient}},
+		Templates: &NotificationTemplatesPatch{InvoiceRequested: &NotificationSceneTemplatePatch{ZHCN: &NotificationLocalizedTemplatePatch{Title: &title}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender := &NotificationService{settingService: settings}
+	payload := queue.NotificationDispatchPayload{EventType: "invoice_requested", Force: true}
+	if err := sender.Dispatch(context.Background(), payload); err != nil {
+		t.Fatalf("disabled scene sent: %v", err)
+	}
+	_, err = settings.PatchNotificationCenterSetting(NotificationCenterSettingPatch{Scenes: &NotificationScenePatch{InvoiceRequested: &enabled}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := settings.GetNotificationCenterSetting()
+	if err != nil || saved.Templates.InvoiceRequested.ZHCN.Title != title || !saved.Scenes.ExceptionAlert {
+		t.Fatalf("patch lost adjacent settings: %v", err)
+	}
+	// Delivery failures must remain retryable instead of being swallowed by time dedupe.
+	for i := 0; i < 2; i++ {
+		if err := sender.Dispatch(context.Background(), payload); !errors.Is(err, ErrNotificationSendFailed) {
+			t.Fatalf("attempt %d: %v", i, err)
+		}
+	}
+	enabled = false
+	if _, err = settings.PatchNotificationCenterSetting(NotificationCenterSettingPatch{Scenes: &NotificationScenePatch{InvoiceRequested: &enabled}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sender.Dispatch(context.Background(), payload); err != nil {
+		t.Fatalf("disabled scene retried: %v", err)
 	}
 }

@@ -3137,8 +3137,9 @@ const messages = {
             walletRechargeSuccess: '用户成功充值通知',
             orderPaidSuccess: '订单支付成功通知',
             manualFulfillmentPending: '待人工交付订单提醒',
+            invoiceRequested: '收到发票申请',
             exceptionAlert: '异常告警通知',
-            exceptionThresholdHint: '异常告警阈值沿用“仪表盘规则”：低库存阈值、缺货商品阈值、待支付订单阈值、支付失败阈值。库存告警、通知巡检中的待支付和支付失败告警使用上方独立频率设置。',
+            exceptionThresholdHint: '售罄和低库存邮件提醒请开启「异常告警」与邮件渠道，并配置 SMTP 和收件人。异常告警阈值沿用“仪表盘规则”：低库存阈值、缺货商品阈值、待支付订单阈值、支付失败阈值。库存告警、通知巡检中的待支付和支付失败告警使用上方独立频率设置。',
           },
           templates: {
             title: '模板配置（按当前语言编辑）',
@@ -7408,8 +7409,9 @@ const messages = {
             walletRechargeSuccess: '用戶儲值成功通知',
             orderPaidSuccess: '訂單支付成功通知',
             manualFulfillmentPending: '待人工交付訂單提醒',
+            invoiceRequested: '收到發票申請',
             exceptionAlert: '異常告警通知',
-            exceptionThresholdHint: '異常告警閾值沿用「儀表板規則」：低庫存閾值、缺貨商品閾值、待支付訂單閾值、支付失敗閾值。庫存告警、通知巡檢中的待支付和支付失敗告警使用上方獨立頻率設定。',
+            exceptionThresholdHint: '售罄和低庫存郵件提醒請開啟「異常告警」與郵件渠道，並設定 SMTP 和收件人。異常告警閾值沿用「儀表板規則」：低庫存閾值、缺貨商品閾值、待支付訂單閾值、支付失敗閾值。庫存告警、通知巡檢中的待支付和支付失敗告警使用上方獨立頻率設定。',
           },
           templates: {
             title: '模板配置（依目前語言編輯）',
@@ -11679,8 +11681,9 @@ const messages = {
             walletRechargeSuccess: 'Wallet recharge succeeded',
             orderPaidSuccess: 'Order payment succeeded',
             manualFulfillmentPending: 'Manual fulfillment pending',
+            invoiceRequested: 'Invoice requested',
             exceptionAlert: 'Exception alerts',
-            exceptionThresholdHint: 'Exception alert thresholds reuse Dashboard Rules: low stock, out-of-stock products, pending orders, and payment failures. Inventory alerts, pending and failed payment alerts in the notification scheduler use the independent frequency setting above.',
+            exceptionThresholdHint: 'For stock emails, enable exception alerts and the email channel, then configure SMTP and recipients. Exception alert thresholds reuse Dashboard Rules: low stock, out-of-stock products, pending orders, and payment failures. Inventory alerts, pending and failed payment alerts in the notification scheduler use the independent frequency setting above.',
           },
           templates: {
             title: 'Templates (edit in current language)',
