@@ -3,13 +3,15 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { userApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
-const props = defineProps<{ order: { order_no: string; status: string; parent_id?: number; paid_at?: string; refunded_amount?: string; total_amount: string } }>()
+import { invoiceIneligibleReason, type InvoiceOrder } from '@/utils/invoice'
+const props = defineProps<{ order: InvoiceOrder & { order_no: string } }>()
 const { t } = useI18n()
 const item = ref<any>(null)
 const loaded = ref(false), loading = ref(false), busy = ref(false), error = ref(''), success = ref('')
 const form = reactive({ kind: 'personal', title: '', tax_id: '', email: '', note: '' })
 const path = computed(() => `/orders/${encodeURIComponent(props.order.order_no)}/invoice`)
-const eligible = computed(() => !props.order.parent_id && !!props.order.paid_at && Number(props.order.total_amount) > 0 && Number(props.order.refunded_amount || 0) === 0 && ['paid', 'fulfilling', 'partially_delivered', 'delivered', 'completed'].includes(props.order.status))
+const ineligibleReason = computed(() => invoiceIneligibleReason(props.order))
+const eligible = computed(() => !ineligibleReason.value)
 const canApply = computed(() => loaded.value && eligible.value && (!item.value || item.value.status === 'rejected'))
 async function load() {
   loading.value = true; error.value = ''
@@ -23,7 +25,7 @@ async function load() {
   finally { loading.value = false }
 }
 async function submit() {
-  if (busy.value) return
+  if (busy.value || !canApply.value) return
   busy.value = true; error.value = ''; success.value = ''
   try {
     item.value = (await userApi.post(path.value, form)).data.data
@@ -50,7 +52,8 @@ onMounted(load)
       <h2 class="text-lg font-bold">{{ t('invoice.title') }}</h2>
       <Button type="button" variant="outline" size="sm" :disabled="busy || loading" @click="load">{{ t('invoice.refresh') }}</Button>
     </div>
-    <p class="text-sm text-muted-foreground">{{ t('invoice.hint') }}</p>
+    <p v-if="eligible" class="text-sm text-muted-foreground">{{ t('invoice.hint') }}</p>
+    <p v-if="ineligibleReason" class="text-sm text-muted-foreground">{{ t(ineligibleReason) }}</p>
     <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
     <p v-if="success" role="status" class="text-sm text-green-600">{{ success }}</p>
     <p v-if="loading" class="text-sm">{{ t('invoice.busy') }}</p>
@@ -66,7 +69,7 @@ onMounted(load)
           <Button type="button" :disabled="busy" variant="outline" size="sm" @click="download">{{ t('invoice.download') }}</Button>
         </template>
       </div>
-      <p v-if="!eligible" class="text-sm text-muted-foreground">{{ t('invoice.eligible') }}</p>
+      <p v-if="!item && !eligible" class="text-sm text-muted-foreground">{{ t('invoice.empty') }}</p>
       <form v-if="canApply" class="grid gap-4 sm:grid-cols-2" @submit.prevent="submit">
         <label class="text-sm space-y-2">{{ t('invoice.kind') }}
           <select v-model="form.kind" :disabled="busy" class="block w-full rounded-md border bg-background px-3 py-2"><option value="personal">{{ t('invoice.personal') }}</option><option value="company">{{ t('invoice.company') }}</option></select>

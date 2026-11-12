@@ -1,5 +1,13 @@
 export const invoiceMessages = {
   "zh-CN": {
+    "viewRecords": "查看发票记录",
+    "collapse": "收起",
+    "ineligibleCanceled": "已取消，无法申请发票。",
+    "ineligibleExpired": "订单已过期，无法申请发票。",
+    "ineligibleUnpaid": "订单尚未付款，付款后可申请发票。",
+    "ineligibleRefunded": "订单已发生退款，无法申请发票。",
+    "ineligibleChild": "子订单无法单独申请，请前往主订单。",
+    "ineligibleAmount": "订单金额必须大于零才能申请发票。",
     "entry": "申请发票",
     "entryHint": "选择订单即可申请发票、查看申请进度或下载电子发票。仅支持已付款且未退款的主订单。",
     "title": "订单发票",
@@ -52,6 +60,14 @@ export const invoiceMessages = {
     "refundHint": "若订单发生退款，请先核对票据处理情况；系统不自动冲红或重新开票。"
   },
   "zh-TW": {
+    "viewRecords": "查看發票紀錄",
+    "collapse": "收起",
+    "ineligibleCanceled": "已取消，無法申請發票。",
+    "ineligibleExpired": "訂單已過期，無法申請發票。",
+    "ineligibleUnpaid": "訂單尚未付款，付款後可申請發票。",
+    "ineligibleRefunded": "訂單已發生退款，無法申請發票。",
+    "ineligibleChild": "子訂單無法單獨申請，請前往主訂單。",
+    "ineligibleAmount": "訂單金額必須大於零才能申請發票。",
     "entry": "申請發票",
     "entryHint": "選擇訂單即可申請發票、查看申請進度或下載電子發票。僅支援已付款且未退款的主訂單。",
     "title": "訂單發票",
@@ -104,6 +120,14 @@ export const invoiceMessages = {
     "refundHint": "若訂單發生退款，請先核對票據處理情況；系統不自動沖紅或重新開票。"
   },
   "en-US": {
+    "viewRecords": "View invoice records",
+    "collapse": "Collapse",
+    "ineligibleCanceled": "Canceled orders cannot request invoices.",
+    "ineligibleExpired": "Expired orders cannot request invoices.",
+    "ineligibleUnpaid": "Pay for this order before requesting an invoice.",
+    "ineligibleRefunded": "Refunded orders cannot request invoices.",
+    "ineligibleChild": "Request an invoice from the parent order.",
+    "ineligibleAmount": "The order amount must be greater than zero.",
     "entry": "Request invoice",
     "entryHint": "Select an order to request an invoice, check its status or download it. Only paid, non-refunded parent orders are eligible.",
     "title": "Order invoice",

@@ -128,7 +128,10 @@
               <Button as-child variant="outline" size="sm">
                 <router-link :to="`/orders/${order.order_no}`">{{ t('orders.viewDetails') }}</router-link>
               </Button>
-              <Button v-if="invoiceMode" type="button" size="sm" @click="selectedOrder = selectedOrder === order.order_no ? '' : order.order_no">{{ t('invoice.entry') }}</Button>
+              <template v-if="invoiceMode">
+                <span v-if="invoiceIneligibleReason(order)" class="text-sm text-muted-foreground">{{ t(invoiceIneligibleReason(order)!) }}</span>
+                <Button type="button" size="sm" :variant="invoiceIneligibleReason(order) ? 'outline' : 'default'" :aria-expanded="selectedOrder === order.order_no" @click="selectedOrder = selectedOrder === order.order_no ? '' : order.order_no">{{ t(selectedOrder === order.order_no ? 'invoice.collapse' : invoiceIneligibleReason(order) ? 'invoice.viewRecords' : 'invoice.entry') }}</Button>
+              </template>
               <Button v-if="order.status === 'pending_payment'" as-child size="sm">
                 <router-link :to="`/pay?order_no=${order.order_no}`">{{ t('orders.payNow') }}</router-link>
               </Button>
@@ -269,6 +272,7 @@ import PanelHeading from '../../components/shared/PanelHeading.vue'
 import StatCard from '../../components/shared/StatCard.vue'
 
 import OrderInvoice from '../../components/OrderInvoice.vue'
+import { invoiceIneligibleReason } from '@/utils/invoice'
 
 withDefaults(defineProps<{ invoiceMode?: boolean }>(), { invoiceMode: false })
 const selectedOrder = ref('')
