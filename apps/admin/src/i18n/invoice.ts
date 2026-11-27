@@ -37,7 +37,7 @@ export const invoiceMessages = {
     "reject": "驳回申请",
     "reason": "驳回原因",
     "upload": "保存电子发票",
-    "pdf": "上传 PDF，最大 5 MiB。请核对抬头、税号和金额；保存后可下载检查，再确认发送。",
+    "pdf": "上传 PDF 发票（最大 5 MiB），核对抬头、税号和金额。待审核时可重新上传替换。",
     "send": "确认发送至上述邮箱",
     "retry": "重试发送至上述邮箱",
     "success": "操作已完成",
@@ -47,7 +47,11 @@ export const invoiceMessages = {
     "close": "关闭",
     "submitted": "申请已提交，等待管理员审核",
     "sentAt": "邮件发送时间",
-    "refundHint": "若订单发生退款，请先核对票据处理情况；系统不自动冲红或重新开票。"
+    "refundHint": "若订单发生退款，请先核对票据处理情况；系统不自动冲红或重新开票。",
+    "workflow": "先上传并核对发票，再点击申请通过并发送。收件人为上方接收邮箱。",
+    "approveSend": "申请通过并发送",
+    "uploaded": "已上传，待审核",
+    "sentSuccess": "发票邮件已提交发送"
   },
   "zh-TW": {
     "title": "訂單發票",
@@ -87,7 +91,7 @@ export const invoiceMessages = {
     "reject": "駁回申請",
     "reason": "駁回原因",
     "upload": "儲存電子發票",
-    "pdf": "上傳 PDF，最大 5 MiB。請核對抬頭、稅號和金額；儲存後可下載檢查，再確認寄送。",
+    "pdf": "上傳 PDF 發票（最大 5 MiB），核對抬頭、稅號和金額。待審核時可重新上傳替換。",
     "send": "確認寄至上述信箱",
     "retry": "重試寄至上述信箱",
     "success": "操作已完成",
@@ -97,7 +101,11 @@ export const invoiceMessages = {
     "close": "關閉",
     "submitted": "申請已提交，等待管理員審核",
     "sentAt": "郵件寄送時間",
-    "refundHint": "若訂單發生退款，請先核對票據處理情況；系統不自動沖紅或重新開票。"
+    "refundHint": "若訂單發生退款，請先核對票據處理情況；系統不自動沖紅或重新開票。",
+    "workflow": "先上傳並核對發票，再點擊申請通過並發送。收件人為上方接收郵箱。",
+    "approveSend": "申請通過並發送",
+    "uploaded": "已上傳，待審核",
+    "sentSuccess": "發票郵件已提交發送"
   },
   "en-US": {
     "title": "Order invoice",
@@ -137,7 +145,7 @@ export const invoiceMessages = {
     "reject": "Reject",
     "reason": "Rejection reason",
     "upload": "Save PDF",
-    "pdf": "Upload a PDF up to 5 MiB. Check its title, tax ID and amount. After saving, download to verify before sending.",
+    "pdf": "Upload a PDF up to 5 MiB. Verify the title, tax ID and amount. Pending drafts can be replaced.",
     "send": "Send to the email above",
     "retry": "Retry sending to the email above",
     "success": "Operation completed",
@@ -147,6 +155,10 @@ export const invoiceMessages = {
     "close": "Close",
     "submitted": "Request submitted for review",
     "sentAt": "Email sent at",
-    "refundHint": "If an order is refunded, review the invoice manually. This system does not automatically cancel or reissue invoices."
+    "refundHint": "If an order is refunded, review the invoice manually. This system does not automatically cancel or reissue invoices.",
+    "workflow": "Upload and verify the invoice, then approve and send it to the recipient email above.",
+    "approveSend": "Approve and send",
+    "uploaded": "Uploaded, awaiting review",
+    "sentSuccess": "Invoice email submitted for delivery"
   }
 }

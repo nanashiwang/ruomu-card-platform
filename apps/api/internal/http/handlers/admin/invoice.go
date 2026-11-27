@@ -100,7 +100,7 @@ func (h *Handler) DownloadInvoice(c *gin.Context) {
 	if !ok {
 		return
 	}
-	doc, err := h.InvoiceService.Document(id)
+	doc, err := h.InvoiceService.AdminDocument(id)
 	if err != nil {
 		shared.InvoiceError(c, err)
 		return

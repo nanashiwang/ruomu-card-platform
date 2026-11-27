@@ -76,8 +76,8 @@ func TestInvoiceLifecycleAndMailRetry(t *testing.T) {
 	if _, err = s.Apply(o.ID, o.UserID, invoiceInput()); !errors.Is(err, ErrInvoiceState) {
 		t.Fatal("duplicate", err)
 	}
-	if err = s.Upload(item.ID, 8, invoiceTestPDF); !errors.Is(err, ErrInvoiceState) {
-		t.Fatal("unreviewed upload", err)
+	if err = s.Upload(item.ID, 8, invoiceTestPDF); err != nil {
+		t.Fatal("draft upload", err)
 	}
 	if err = s.Review(item.ID, 8, false, ""); !errors.Is(err, ErrInvoiceInvalid) {
 		t.Fatal("empty rejection", err)
@@ -516,5 +516,99 @@ func TestInvoiceNotificationToggleAndRetry(t *testing.T) {
 	}
 	if err := sender.Dispatch(context.Background(), payload); err != nil {
 		t.Fatalf("disabled scene retried: %v", err)
+	}
+}
+
+func TestInvoiceDraftApprovalAndSend(t *testing.T) {
+	s, o := invoiceFixture(t)
+	item, err := s.Apply(o.ID, o.UserID, invoiceInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.Upload(item.ID, 8, []byte("invalid")); !errors.Is(err, ErrInvoicePDF) {
+		t.Fatal(err)
+	}
+	if err = s.Upload(item.ID, 8, invoiceTestPDF); err != nil {
+		t.Fatal(err)
+	}
+	draft, err := s.AdminDocument(item.ID)
+	if err != nil || draft.Status != "pending" {
+		t.Fatalf("draft: %+v %v", draft, err)
+	}
+	if _, err = s.Document(item.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("customer can download draft: %v", err)
+	}
+	if err = s.Send(item.ID); !errors.Is(err, ErrInvoiceState) {
+		t.Fatalf("draft sent: %v", err)
+	}
+	replacement := append(append([]byte{}, invoiceTestPDF...), []byte("\nreplacement")...)
+	if err = s.Upload(item.ID, 8, replacement); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.Review(item.ID, 8, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := s.Document(item.ID)
+	if err != nil || !bytes.Equal(doc.FileData, replacement) {
+		t.Fatal("approval did not publish latest PDF", err)
+	}
+	if err = s.Upload(item.ID, 8, invoiceTestPDF); !errors.Is(err, ErrInvoiceState) {
+		t.Fatal("issued PDF replaced", err)
+	}
+	calls := 0
+	s.send = func(email, orderNo, name string, data []byte) error {
+		calls++
+		if email != invoiceInput().Email || !bytes.Equal(data, replacement) {
+			t.Fatal("wrong recipient or attachment")
+		}
+		if calls == 1 {
+			return errors.New("SMTP unavailable")
+		}
+		return nil
+	}
+	if err = s.Send(item.ID); !errors.Is(err, ErrInvoiceMail) {
+		t.Fatal(err)
+	}
+	if err = s.Send(item.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.Send(item.ID); err != nil || calls != 2 {
+		t.Fatal("duplicate mail", err, calls)
+	}
+}
+
+func TestInvoiceRejectedDraftCleared(t *testing.T) {
+	s, o := invoiceFixture(t)
+	item, err := s.Apply(o.ID, o.UserID, invoiceInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.Upload(item.ID, 8, invoiceTestPDF); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.Review(item.ID, 8, false, "抬头错误"); err != nil {
+		t.Fatal(err)
+	}
+	var stored models.OrderInvoice
+	if err = s.db.First(&stored, item.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(stored.FileData) != 0 || stored.FileName != "" {
+		t.Fatal("rejected PDF retained")
+	}
+	if _, err = s.AdminDocument(item.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatal(err)
+	}
+	if _, err = s.Apply(o.ID, o.UserID, invoiceInput()); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.db.Model(&o).Update("status", "refunded").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err = s.Upload(item.ID, 8, invoiceTestPDF); !errors.Is(err, ErrInvoiceState) {
+		t.Fatal("refunded upload accepted", err)
+	}
+	if err = s.Review(item.ID, 8, true, ""); !errors.Is(err, ErrInvoiceState) {
+		t.Fatal("refunded approval accepted", err)
 	}
 }

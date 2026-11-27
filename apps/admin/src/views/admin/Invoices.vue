@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api/client'
 import { useAdminAuthStore } from '@/stores/auth'
@@ -8,23 +8,31 @@ const { t } = useI18n(), auth = useAdminAuthStore()
 const items = ref<any[]>([]), total = ref(0), page = ref(1), status = ref(''), orderNo = ref('')
 const loading = ref(false), busy = ref(false), error = ref(''), success = ref('')
 const selectedId = ref<number | null>(null), reason = ref(''), file = ref<File | null>(null)
-const selected = computed(() => items.value.find(x => x.id === selectedId.value))
+const selected = ref<any>(null)
 const can = (action: string) => auth.hasPermission(`POST:/admin/invoices/:id/${action}`)
 async function load(next = page.value) {
   loading.value = true; error.value = ''
   try {
     const data = (await api.get('/admin/invoices', { params: { page: next, status: status.value, order_no: orderNo.value.trim() } })).data.data
     items.value = data.items; total.value = data.total; page.value = data.page
+    if (selected.value) {
+      const detail = (await api.get('/admin/invoices', { params: { order_no: selected.value.order_no } })).data.data
+      selected.value = detail.items.find((x: any) => x.id === selectedId.value) || null
+    }
   } catch (e: any) { error.value = e.message || t('invoice.error') }
   finally { loading.value = false }
 }
-function select(id: number) { selectedId.value = id; reason.value = ''; file.value = null; success.value = ''; error.value = '' }
-async function act(action: string, body?: unknown) {
+function select(id: number) { selectedId.value = id; selected.value = items.value.find(x => x.id === id); reason.value = ''; file.value = null; success.value = ''; error.value = '' }
+async function act(action: string, body?: unknown, sendAfter = false) {
   if (busy.value || !selected.value) return
   busy.value = true; error.value = ''; success.value = ''
   try {
     await api.post(`/admin/invoices/${selected.value.id}/${action}`, body)
-    success.value = t('invoice.success'); file.value = null
+    if (sendAfter) {
+      selected.value = { ...selected.value, status: 'issued', mail_status: 'pending' }
+      await api.post(`/admin/invoices/${selected.value.id}/send`)
+    }
+    success.value = t(sendAfter || action === 'send' ? 'invoice.sentSuccess' : 'invoice.success'); file.value = null
     await load()
   } catch (e: any) {
     const message = e.message || t('invoice.error')
@@ -35,7 +43,7 @@ async function act(action: string, body?: unknown) {
 }
 function upload() {
   if (!file.value) return
-  if (file.value.size > 5 * 1024 * 1024) { error.value = t('invoice.pdf'); return }
+  if (file.value.size === 0 || file.value.size > 5 * 1024 * 1024) { error.value = t('invoice.pdf'); return }
   const data = new FormData(); data.append('file', file.value); void act('file', data)
 }
 function chooseFile(event: Event) { file.value = (event.target as HTMLInputElement).files?.[0] || null }
@@ -71,17 +79,22 @@ onMounted(() => load())
     </div>
     <div class="flex flex-wrap items-center gap-3"><Button variant="outline" :disabled="page <= 1 || loading || busy" @click="load(page - 1)">{{ t('invoice.previous') }}</Button><span class="text-sm">{{ t('invoice.total', { total, page }) }}</span><Button variant="outline" :disabled="page * 20 >= total || loading || busy" @click="load(page + 1)">{{ t('invoice.next') }}</Button></div>
     <section v-if="selected" class="rounded-xl border bg-card p-5 space-y-4 break-words">
-      <div class="flex items-center justify-between"><h2 class="font-bold">{{ selected.order_no }} · {{ t(`invoice.${selected.status}`) }}</h2><Button variant="ghost" :disabled="busy" @click="selectedId = null">{{ t('invoice.close') }}</Button></div>
+      <div class="flex items-center justify-between"><h2 class="font-bold">{{ selected.order_no }} · {{ t(`invoice.${selected.status}`) }}</h2><Button variant="ghost" :disabled="busy" @click="selectedId = null; selected = null">{{ t('invoice.close') }}</Button></div>
       <dl class="grid gap-3 sm:grid-cols-2 text-sm"><div><dt class="text-muted-foreground">{{ t('invoice.heading') }}</dt><dd>{{ selected.title }}（{{ t(`invoice.${selected.kind}`) }}）</dd></div><div><dt class="text-muted-foreground">{{ t('invoice.tax') }}</dt><dd>{{ selected.tax_id || '—' }}</dd></div><div><dt class="text-muted-foreground">{{ t('invoice.email') }}</dt><dd>{{ selected.email }}</dd></div><div><dt class="text-muted-foreground">{{ t('invoice.amount') }}</dt><dd>{{ selected.amount }} {{ selected.currency }}</dd></div><div class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('invoice.note') }}</dt><dd class="whitespace-pre-wrap">{{ selected.note || '—' }}</dd></div></dl>
       <p v-if="selected.rejection_reason">{{ t('invoice.reason') }}：{{ selected.rejection_reason }}</p>
-      <form v-if="selected.status === 'pending' && can('review')" class="space-y-3" @submit.prevent="act('review', { decision: 'reject', reason })">
-        <Button type="button" :disabled="busy || loading" @click="act('review', { decision: 'approve' })">{{ t('invoice.approve') }}</Button>
-        <label class="block text-sm">{{ t('invoice.reason') }}<textarea v-model="reason" required maxlength="1000" :disabled="busy" class="mt-2 block w-full rounded-md border bg-background p-3" /></label>
-        <Button type="submit" variant="destructive" :disabled="busy || loading || !reason.trim()">{{ t('invoice.reject') }}</Button>
-      </form>
-      <form v-if="selected.status === 'approved' && can('file')" class="space-y-3" @submit.prevent="upload">
+      <form v-if="['pending', 'approved'].includes(selected.status) && can('file')" class="space-y-3" @submit.prevent="upload">
         <label class="block text-sm">{{ t('invoice.pdf') }}<input :key="selected.id" type="file" accept="application/pdf,.pdf" required :disabled="busy" class="mt-3 block w-full" @change="chooseFile" /></label>
         <Button type="submit" :disabled="busy || loading || !file">{{ t('invoice.upload') }}</Button>
+      </form>
+      <div v-if="selected.file_name && selected.status === 'pending'" class="rounded-lg border p-3 text-sm space-y-2">
+        <p>{{ t('invoice.uploaded') }}：{{ selected.file_name }}</p>
+        <Button v-if="auth.hasPermission('GET:/admin/invoices/:id/download')" variant="outline" :disabled="busy || loading" @click="download">{{ t('invoice.download') }}</Button>
+      </div>
+      <form v-if="selected.status === 'pending' && can('review')" class="space-y-3" @submit.prevent="act('review', { decision: 'reject', reason })">
+        <p class="text-sm text-muted-foreground">{{ t('invoice.workflow') }}</p>
+        <Button v-if="can('send')" type="button" :disabled="busy || loading || !selected.file_name || !!file" @click="act('review', { decision: 'approve' }, true)">{{ t('invoice.approveSend') }}</Button>
+        <label class="block text-sm">{{ t('invoice.reason') }}<textarea v-model="reason" required maxlength="1000" :disabled="busy" class="mt-2 block w-full rounded-md border bg-background p-3" /></label>
+        <Button type="submit" variant="destructive" :disabled="busy || loading || !reason.trim()">{{ t('invoice.reject') }}</Button>
       </form>
       <template v-if="selected.status === 'issued'">
         <p>{{ t('invoice.mail') }}：{{ t(`invoice.mail_${selected.mail_status}`) }}</p>

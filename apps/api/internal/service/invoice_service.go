@@ -182,9 +182,18 @@ func (s *InvoiceService) Review(id, adminID uint, approve bool, reason string) e
 				return err
 			}
 			status = "approved"
+			if item.FileName != "" {
+				status = "issued"
+			}
 			reason = ""
 		}
-		result := tx.Model(&models.OrderInvoice{}).Where("id = ? AND status = ?", id, "pending").Updates(map[string]any{"status": status, "rejection_reason": reason, "reviewed_by": adminID, "reviewed_at": time.Now()})
+		updates := map[string]any{"status": status, "rejection_reason": reason, "reviewed_by": adminID, "reviewed_at": time.Now()}
+		if !approve {
+			updates["file_data"] = nil
+			updates["file_name"] = ""
+			updates["uploaded_by"] = 0
+		}
+		result := tx.Model(&models.OrderInvoice{}).Where("id = ? AND status = ?", id, "pending").Updates(updates)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -209,7 +218,14 @@ func (s *InvoiceService) Upload(id, adminID uint, data []byte) error {
 		if err := s.checkSnapshot(tx, &item); err != nil {
 			return err
 		}
-		result := tx.Model(&models.OrderInvoice{}).Where("id = ? AND status = ?", id, "approved").Updates(map[string]any{"status": "issued", "file_data": data, "file_name": fmt.Sprintf("invoice-%d.pdf", id), "uploaded_by": adminID})
+		if item.Status != "pending" && item.Status != "approved" {
+			return ErrInvoiceState
+		}
+		nextStatus := item.Status
+		if nextStatus == "approved" {
+			nextStatus = "issued"
+		}
+		result := tx.Model(&models.OrderInvoice{}).Where("id = ? AND status = ?", id, item.Status).Updates(map[string]any{"status": nextStatus, "file_data": data, "file_name": fmt.Sprintf("invoice-%d.pdf", id), "uploaded_by": adminID})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -226,6 +242,18 @@ func (s *InvoiceService) Document(id uint) (*models.OrderInvoice, error) {
 		return nil, err
 	}
 	if item.Status != "issued" || len(item.FileData) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &item, nil
+}
+
+// AdminDocument includes pending drafts; customer downloads still require issued.
+func (s *InvoiceService) AdminDocument(id uint) (*models.OrderInvoice, error) {
+	var item models.OrderInvoice
+	if err := s.db.First(&item, id).Error; err != nil {
+		return nil, err
+	}
+	if len(item.FileData) == 0 || (item.Status != "pending" && item.Status != "issued") {
 		return nil, gorm.ErrRecordNotFound
 	}
 	return &item, nil
